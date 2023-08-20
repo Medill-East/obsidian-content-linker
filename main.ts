@@ -1,11 +1,17 @@
-import { App, Editor, MarkdownView, Modal, Notice, WorkspaceLeaf, Plugin, TFile, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, WorkspaceLeaf, Plugin, TFile, PluginSettingTab, Setting, MarkdownRenderChild } from 'obsidian';
+
+const container = createDiv();
 
 interface MyPluginSettings {
   mySetting: string;
+  blackList: string[];
+  pageSize: number;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-  mySetting: 'default'
+  mySetting: 'default',
+  blackList: [],
+  pageSize: 10,
 }
 
 export default class ContentLinkerPlugin extends Plugin {
@@ -21,7 +27,7 @@ export default class ContentLinkerPlugin extends Plugin {
         await this.searchContent();
       }
     });
-
+    
     this.addSettingTab(new ContentLinkerSettingTab(this.app, this));
   }
 
@@ -37,24 +43,32 @@ export default class ContentLinkerPlugin extends Plugin {
   
       if (matches !== null) {
         for (const match of matches) {
-          if (duplicateContent.has(match)) {
-            duplicateContent.get(match).push(file.path);
-          } else {
-            duplicateContent.set(match, [file.path]);
+          if (!this.settings.blackList.includes(match)) {
+            if (duplicateContent.has(match)) {
+              duplicateContent.get(match).push(file.path);
+            } else {
+              duplicateContent.set(match, [file.path]);
+            }
           }
         }
       }
     }
   
-    const options = Array.from(duplicateContent.keys()).map((key) => {
-      const origins = duplicateContent.get(key).join(', ');
-      return {
-        content: key,
-        value: key,
-        description: `Add bi-directional link to: ${key}\nOrigins: ${origins}`
-      };
-    });
+    console.log(duplicateContent); // 输出匹配到的内容和对应的文件路径
   
+    const options = Array.from(duplicateContent.keys())
+      .map((key) => {
+        const origins = duplicateContent.get(key).join(', ');
+        return {
+          content: key,
+          value: key,
+          description: `Add bi-directional link to: ${key}\nOrigins: ${origins}`
+        };
+      })
+      .slice(0, this.settings.pageSize);
+    
+    console.log(options); // 输出最终可供选择的选项
+      
     const modal = new Modal(this.app);
     modal.open();
     modal.titleEl.setText('Select an option');
@@ -63,27 +77,32 @@ export default class ContentLinkerPlugin extends Plugin {
     const listContainer = createEl('ul');
     modal.contentEl.appendChild(listContainer);
   
-    for (const option of options) {
-      const listItem = createEl('li');
-      listContainer.appendChild(listItem);
-  
-      const button = createEl('button');
-      button.setText(`[${option.content}]`);
-      button.addEventListener('click', () => {
-        const activeLeaf = this.app.workspace.activeLeaf;
-        if (activeLeaf) {
-          const activeView = activeLeaf.view;
-          const newLink = `[[${option.content}]]`;
-          if (activeView instanceof MarkdownView) {
-            const editor = activeView.editor;
-            editor?.replaceSelection(newLink);
-            editor?.focus();
+    if (options.length === 0) {
+      const emptyNotice = createEl('p');
+      emptyNotice.setText('No options available');
+      listContainer.appendChild(emptyNotice);
+    } else {
+      for (const option of options) {
+        const listItem = createEl('li');
+        listContainer.appendChild(listItem);
+    
+        const button = createEl('button');
+        button.setText(`[${option.content}]`);
+        button.addEventListener('click', () => {
+          const activeLeaf = this.app.workspace.activeLeaf;
+          if (activeLeaf) {
+            const activeView = activeLeaf.view;
+            const newLink = `[[${option.content}]]`;
+            if (activeView instanceof MarkdownView) {
+              const editor = activeView.editor;
+              editor?.replaceSelection(newLink);
+              editor?.focus();
+            }
           }
-        }
-        modal.close();
-      });
-  
-      listItem.appendChild(button);
+        });
+    
+        listItem.appendChild(button);
+      }
     }
   }
   
@@ -116,6 +135,30 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.mySetting)
         .onChange(async (value) => {
           this.plugin.settings.mySetting = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName('Blacklist')
+      .setDesc('Enter keywords to exclude from potential links')
+      .addTextArea((text) => {
+        text
+          .setPlaceholder('Enter keywords to blacklist')
+          .setValue(this.plugin.settings.blackList.join(', '))
+          .onChange(async (value) => {
+            this.plugin.settings.blackList = value.split(',').map((keyword) => keyword.trim());
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Page Size')
+      .setDesc('Number of potential links to show per page')
+      .addText(text => text
+        .setPlaceholder('Enter page size')
+        .setValue(this.plugin.settings.pageSize.toString())
+        .onChange(async (value) => {
+          this.plugin.settings.pageSize = parseInt(value);
           await this.plugin.saveSettings();
         }));
   }
