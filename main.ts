@@ -60,22 +60,19 @@ export default class ContentLinkerPlugin extends Plugin {
   
     for (const note of notes) {
       const content = await vault.cachedRead(note);
-    
-      // Use regex to find all non-bi-link keywords in the note
-      const keywords = content.match(/\[\[([^\]]+)\]\](?!\])/g) || [];
-    
+  
+      // Find all unique keywords in the note
+      const uniqueKeywords = content.match(/\b\w+\b/g) || []; // add default empty array
+  
       // Increase the count for each keyword that is not a valid bi-link
-      for (const keyword of keywords) {
-        const keywordWithoutBrackets = keyword.slice(2, -2);
-    
+      for (const keyword of uniqueKeywords) {
         if (
-          !keywordWithoutBrackets.includes('|') &&
-          !potentialBiLinks.has(keywordWithoutBrackets) &&
-          !this.biLinks.some((biLink) => biLink.keyword === keywordWithoutBrackets)
+          !potentialBiLinks.has(keyword) &&
+          !this.biLinks.some((biLink) => biLink.keyword === keyword)
         ) {
-          potentialBiLinks.set(keywordWithoutBrackets, 1);
-        } else if (!keywordWithoutBrackets.includes('|')) {
-          potentialBiLinks.set(keywordWithoutBrackets, (potentialBiLinks.get(keywordWithoutBrackets) || 0) + 1);
+          potentialBiLinks.set(keyword, 1);
+        } else {
+          potentialBiLinks.set(keyword, (potentialBiLinks.get(keyword) || 0) + 1);
         }
       }
     }
@@ -89,6 +86,7 @@ export default class ContentLinkerPlugin extends Plugin {
     await this.saveDataToLocalStorage(this.biLinks);
     new Notice('Search Finished!');
   }
+  
 }
 
 class ContentLinkerSettingTab extends PluginSettingTab {
@@ -160,15 +158,15 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     for (const selectedBiLink of selectedBiLinks) {
       const { keyword } = selectedBiLink;
 
-      // Replace the bi-link keyword in the original content with the bi-link format [[bi-link]]
+      // Replace all occurrences of the selected keyword in the original content with the bi-link format [[bi-link]]
       const vault = this.plugin.app.vault;
       const notes = vault.getMarkdownFiles();
 
       for (const note of notes) {
         let content = await vault.read(note);
 
-        // Use regex to find and replace the selected bi-link keyword with the bi-link format
-        const regex = new RegExp(`\\[\\[${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\]\\]`, 'g');
+        // Use regex to find and replace the selected keyword with the bi-link format
+        const regex = new RegExp(`\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'g');
         content = content.replace(regex, `[[${keyword}]]`);
 
         // Save the updated content back to the note
@@ -191,5 +189,4 @@ class ContentLinkerSettingTab extends PluginSettingTab {
   async saveDataToLocalStorage(): Promise<void> {
     await this.plugin.saveDataToLocalStorage(this.plugin.biLinks);
   }
-
 }
