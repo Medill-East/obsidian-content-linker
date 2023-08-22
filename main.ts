@@ -1,313 +1,195 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab } from 'obsidian';
 
-interface MyPluginSettings {
-  mySetting: string;
-  blackList: string[];
-  pageSize: number;
-  searchResults: SearchResult[];
+interface BiLink {
+  keyword: string;
+  count: number;
+  isSelected: boolean;
 }
-
-interface SearchResult {
-  content: string;
-  occurrences: {
-    file: TAbstractFile;
-    sentence: string | undefined;
-    updatedSentence: string;
-    selected: boolean;
-  }[];
-}
-
-const DEFAULT_SETTINGS: MyPluginSettings = {
-  mySetting: 'default',
-  blackList: [],
-  pageSize: 10,
-  searchResults: [],
-};
 
 export default class ContentLinkerPlugin extends Plugin {
-  settings: MyPluginSettings;
+  biLinks: BiLink[];
 
   async onload() {
-    await this.loadSettings();
+    await this.loadData();
 
-    this.addCommand({
-      id: 'search-content',
-      name: 'Search Possible Bi-Link in Vault',
-      callback: async () => {
-        await this.searchContent();
-        new Notice('Search Started!');
-      },
-    });
-    
+    console.log('Loading Content Linker plugin');
 
+    // Register a command to search for possible bi-links in vault
     this.addCommand({
-      id: 'clear-results',
-      name: 'Clear Results',
+      id: 'search-possible-bi-links',
+      name: 'Search Possible Bi-Links in Vault',
       callback: async () => {
-        await this.clearResults();
+        await this.searchPossibleBiLinks();
       },
     });
 
+    // Add a setting tab
     this.addSettingTab(new ContentLinkerSettingTab(this.app, this));
   }
 
-  async searchContent() {
+  async loadData() {
+    this.biLinks = await this.loadDataFromLocalStorage() || [];
+  }
+
+  async loadDataFromLocalStorage(): Promise<BiLink[] | null> {
+    try {
+      const data = window.localStorage.getItem('content-linker-plugin');
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      console.error('Failed to load data from local storage', error);
+    }
+    return [];
+  }
+
+  async saveDataToLocalStorage(data: BiLink[]): Promise<void> {
+    try {
+      window.localStorage.setItem('content-linker-plugin', JSON.stringify(data));
+    } catch (error) {
+      console.error('Failed to save data to local storage', error);
+    }
+  }
+
+  async searchPossibleBiLinks() {
     const vault = this.app.vault;
-    const files = vault.getMarkdownFiles();
-    const duplicateContent = new Map<string, { file: TAbstractFile; content: string }[]>();
-
-    for (const file of files) {
-      const content = await vault.adapter.read(file.path);
-      const regex = /\[\[(.+?)\]\]/g;
-      let match;
-      while ((match = regex.exec(content)) !== null) {
-        const key = match[1];
-        if (duplicateContent.has(key)) {
-          duplicateContent.get(key)!.push({ file, content });
-        } else {
-          duplicateContent.set(key, [{ file, content }]);
+    const notes = vault.getMarkdownFiles();
+  
+    // Store all potential bi-link keywords and their counts
+    const potentialBiLinks = new Map<string, number>();
+  
+    for (const note of notes) {
+      const content = await vault.cachedRead(note);
+    
+      // Use regex to find all non-bi-link keywords in the note
+      const keywords = content.match(/\[\[([^\]]+)\]\](?!\])/g) || [];
+    
+      // Increase the count for each keyword that is not a valid bi-link
+      for (const keyword of keywords) {
+        const keywordWithoutBrackets = keyword.slice(2, -2);
+    
+        if (
+          !keywordWithoutBrackets.includes('|') &&
+          !potentialBiLinks.has(keywordWithoutBrackets) &&
+          !this.biLinks.some((biLink) => biLink.keyword === keywordWithoutBrackets)
+        ) {
+          potentialBiLinks.set(keywordWithoutBrackets, 1);
+        } else if (!keywordWithoutBrackets.includes('|')) {
+          potentialBiLinks.set(keywordWithoutBrackets, (potentialBiLinks.get(keywordWithoutBrackets) || 0) + 1);
         }
       }
     }
-
-    const searchResults: SearchResult[] = Array.from(duplicateContent.entries()).map(([key, matches]) => {
-      const occurrences = matches.map(({ file, content }) => {
-        const linkRegex = /\[(.*?)\]\((.*?)\)/g;
-        const sentence = content.split('\n').find((sentence) => linkRegex.test(sentence));
-        const updatedSentence = content.replace(linkRegex, `<mark>${key}</mark>`);
-        let selected = false; // Declare selected as a mutable variable
-        return {
-          file,
-          sentence,
-          updatedSentence,
-          selected,
-        } as SearchResult['occurrences'][0];
-      });
-
-      return {
-        content: key,
-        occurrences,
-      };
-    });
-
-    this.settings.searchResults = searchResults.filter(
-      (result) => !result.occurrences.some((occurrence) => occurrence.sentence === undefined)
-    );
-    await this.saveSettings();
-
+  
+    this.biLinks = Array.from(potentialBiLinks.entries()).map(([keyword, count]) => ({
+      keyword,
+      count,
+      isSelected: false,
+    }));
+  
+    await this.saveDataToLocalStorage(this.biLinks);
     new Notice('Search Finished!');
-  }
-
-  async updateSelectedOptions() {
-    const files = this.app.vault.getFiles();
-
-    for (const result of this.settings.searchResults) {
-      for (const occurrence of result.occurrences) {
-        if (occurrence.selected) {
-          const file = files.find((file) => file.path === occurrence.file.path) as TFile;
-          if (file) {
-            const contentBefore = await this.app.vault.read(file);
-            const updatedContent = contentBefore.replace(
-              occurrence.sentence!,
-              occurrence.updatedSentence
-            );
-            await this.app.vault.modify(file, updatedContent);
-          }
-        }
-      }
-    }
-  }
-
-  async clearResults() {
-    this.settings.searchResults = [];
-    await this.saveSettings();
-    new Notice('Results Cleared!');
-  }
-
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-  }
-
-  async saveSettings() {
-    await this.saveData(this.settings);
   }
 }
 
 class ContentLinkerSettingTab extends PluginSettingTab {
   plugin: ContentLinkerPlugin;
-  resultsContainer: HTMLElement;
 
   constructor(app: App, plugin: ContentLinkerPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
 
-  display(): void {
+  async display() {
     const { containerEl } = this;
+    
     containerEl.empty();
-
-    new Setting(containerEl)
-      .setName('Search Possible Bi-Link in Vault')
-      .setDesc('Search Possible Bi-Link in Vault')
-      .addButton((button) =>
-        button
-          .setButtonText('Search Possible Bi-Link in Vault')
-          .onClick(async () => {
-            await this.plugin.searchContent();
-            new Notice('Search Started!');
-          })
-      );
-
-    const blackList = this.plugin.settings.blackList.join(', ');
-
-    new Setting(containerEl)
-      .setName('Blacklist')
-      .setDesc('Enter keywords to exclude from potential links')
-      .addTextArea((text) =>
-        text
-          .setPlaceholder('Enter keywords to blacklist')
-          .setValue(blackList)
-          .onChange(async (value) => {
-            this.plugin.settings.blackList = value.split(',').map((keyword) => keyword.trim());
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('Page Size')
-      .setDesc('Number of potential links to show per page')
-      .addText((text) =>
-        text
-          .setPlaceholder('Enter page size')
-          .setValue(this.plugin.settings.pageSize.toString())
-          .onChange(async (value) => {
-            this.plugin.settings.pageSize = parseInt(value);
-            await this.plugin.saveSettings();
-          })
-      );
-
-    this.resultsContainer = this.containerEl.createDiv();
-
-    this.displaySearchResults();
+    
+    containerEl.createEl('h2', { text: 'Content Linker Settings' });
+    
+    const table = containerEl.createEl('table', { cls: 'content-linker-table' });
+    
+    // Create table headers
+    const thead = table.createTHead();
+    const headerRow = thead.insertRow();
+    headerRow.insertCell().textContent = 'No.';
+    headerRow.insertCell().textContent = 'Count';
+    headerRow.insertCell().textContent = 'Keyword';
+    headerRow.insertCell().textContent = 'Selected';
+    
+    // Sort the biLinks array based on count in descending order
+    const sortedBiLinks = this.plugin.biLinks.sort((a, b) => b.count - a.count);
+    
+    // Create table body rows
+    const tbody = table.createTBody();
+    for (let index = 0; index < Math.min(sortedBiLinks.length, 100); index++) {
+      const { keyword, count, isSelected } = sortedBiLinks[index];
+      const row = tbody.insertRow();
+      row.insertCell().textContent = (index + 1).toString();
+      row.insertCell().textContent = count.toString();
+      row.insertCell().textContent = keyword;
+      row.insertCell().appendChild(this.createCheckbox(keyword, isSelected));
+    }
+    
+    const updateButton = containerEl.createEl('button', { text: 'Update Bi-Link For Selected Options' });
+    updateButton.addEventListener('click', async () => {
+      await this.updateBiLinks();
+    });
   }
 
-  async displaySearchResults() {
-    this.resultsContainer.empty();
+  createCheckbox(keyword: string, checked: boolean): HTMLElement {
+    const checkboxContainer = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = checked;
+    checkboxContainer.appendChild(checkbox);
+    
+    checkbox.addEventListener('change', async () => {
+      this.plugin.biLinks = this.plugin.biLinks.map((biLink) =>
+        biLink.keyword === keyword ? { ...biLink, isSelected: checkbox.checked } : biLink
+      );
 
-    if (this.plugin.settings.searchResults.length === 0) {
-      const noResultsMessage = this.resultsContainer.createEl('div');
-      noResultsMessage.setText('No search results found.');
-      this.resultsContainer.appendChild(noResultsMessage);
-    } else {
-      const searchResultsContainer = this.resultsContainer.createEl('div');
+      await this.saveDataToLocalStorage();
+    });
 
-      for (const [index, { content, occurrences }] of this.plugin.settings.searchResults.entries()) {
-        const searchResultContainer = searchResultsContainer.createEl('div');
+    return checkboxContainer;
+  }
 
-        const header = searchResultContainer.createEl('h3');
-        header.setText(`Search Result: ${content}`);
+  async updateBiLinks() {
+    const selectedBiLinks = this.plugin.biLinks.filter((biLink) => biLink.isSelected);
 
-        const occurrencesList = searchResultContainer.createEl('ul');
+    for (const selectedBiLink of selectedBiLinks) {
+      const { keyword } = selectedBiLink;
 
-        let startIndex = 0;
-        let endIndex = Math.min(this.plugin.settings.pageSize, occurrences.length);
+      // Replace the bi-link keyword in the original content with the bi-link format [[bi-link]]
+      const vault = this.plugin.app.vault;
+      const notes = vault.getMarkdownFiles();
 
-        const displayOccurrences = () => {
-          occurrencesList.empty();
+      for (const note of notes) {
+        let content = await vault.read(note);
 
-          for (let i = startIndex; i < endIndex; i++) {
-            const { file, sentence, updatedSentence, selected } = occurrences[i];
+        // Use regex to find and replace the selected bi-link keyword with the bi-link format
+        const regex = new RegExp(`\\[\\[${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\]\\]`, 'g');
+        content = content.replace(regex, `[[${keyword}]]`);
 
-            const listItem = this.containerEl.createEl('li');
-            occurrencesList.appendChild(listItem);
-
-            const sentenceContainer = this.containerEl.createEl('div');
-            listItem.appendChild(sentenceContainer);
-            sentenceContainer.setText(sentence || '');
-
-            const updatedSentenceContainer = this.containerEl.createEl('div');
-            listItem.appendChild(updatedSentenceContainer);
-            updatedSentenceContainer.innerHTML = updatedSentence;
-
-            let isSelected = selected;
-            const checkbox = this.containerEl.createEl('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = isSelected;
-            checkbox.addEventListener('change', (event) => {
-              isSelected = (event.target as HTMLInputElement).checked;
-              this.plugin.settings.searchResults[index].occurrences[i].selected = isSelected;
-              this.plugin.saveSettings();
-            });
-            listItem.appendChild(checkbox);
-          }
-        };
-
-        displayOccurrences();
-
-        const previousButton = this.containerEl.createEl('button');
-        previousButton.setText('Previous');
-        previousButton.setAttribute('disabled', 'true');
-        searchResultContainer.appendChild(previousButton);
-
-        const nextButton = this.containerEl.createEl('button');
-        nextButton.setText('Next');
-        if (endIndex >= occurrences.length) {
-          nextButton.setAttribute('disabled', 'true');
-        }
-        searchResultContainer.appendChild(nextButton);
-
-        previousButton.addEventListener('click', () => {
-          startIndex = Math.max(startIndex - this.plugin.settings.pageSize, 0);
-          endIndex = Math.min(startIndex + this.plugin.settings.pageSize, occurrences.length);
-          displayOccurrences();
-
-          if (endIndex < occurrences.length) {
-            nextButton.removeAttribute('disabled');
-          }
-
-          if (startIndex === 0) {
-            previousButton.setAttribute('disabled', 'true');
-          }
-        });
-
-        nextButton.addEventListener('click', () => {
-          startIndex = Math.max(startIndex + this.plugin.settings.pageSize, 0);
-          endIndex = Math.min(startIndex + this.plugin.settings.pageSize, occurrences.length);
-          displayOccurrences();
-
-          if (endIndex >= occurrences.length) {
-            nextButton.setAttribute('disabled', 'true');
-          }
-
-          if (startIndex > 0) {
-            previousButton.removeAttribute('disabled');
-          }
-        });
+        // Save the updated content back to the note
+        await vault.modify(note, content);
       }
     }
 
-    new Setting(this.resultsContainer)
-      .setName('Update Bi-Link For Selected Options')
-      .setDesc('Update the selected options to bi-link')
-      .addButton((button) =>
-        button
-          .setButtonText('Update')
-          .onClick(async () => {
-            await this.plugin.updateSelectedOptions();
-            new Notice('Selected options updated!');
-          })
-      );
+    // Deselect the updated bi-links
+    this.plugin.biLinks = this.plugin.biLinks.map((biLink) =>
+      selectedBiLinks.some(({ keyword }) => biLink.keyword === keyword)
+        ? { ...biLink, isSelected: false }
+        : biLink
+    );
 
-    new Setting(this.resultsContainer)
-      .setName('Clear Results')
-      .setDesc('Clear the search results')
-      .addButton((button) =>
-        button
-          .setButtonText('Clear Results')
-          .onClick(async () => {
-            await this.plugin.clearResults();
-            new Notice('Results Cleared!');
-          })
-      );
+    await this.saveDataToLocalStorage();
+
+    new Notice('Update Finished!');
   }
+
+  async saveDataToLocalStorage(): Promise<void> {
+    await this.plugin.saveDataToLocalStorage(this.plugin.biLinks);
+  }
+
 }
