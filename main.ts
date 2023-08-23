@@ -54,21 +54,36 @@ export default class ContentLinkerPlugin extends Plugin {
   async searchPossibleBiLinks() {
     const vault = this.app.vault;
     const notes = vault.getMarkdownFiles();
-  
-    // Store all potential bi-link keywords and their counts
-    const potentialBiLinks = new Map<string, number>();
-  
+    const existingBiLinks = new Set<string>();
+
     for (const note of notes) {
       const content = await vault.cachedRead(note);
-  
+
+      // Find all existing bi-link keywords in the note
+      const biLinkKeywords = content.match(/\[\[(.+?)\]\]/g) || [];
+
+      for (const biLink of biLinkKeywords) {
+        const keyword = biLink.slice(2, -2);
+        existingBiLinks.add(keyword);
+      }
+    }
+
+    // Store all potential bi-link keywords and their counts
+    const potentialBiLinks = new Map<string, number>();
+
+    for (const note of notes) {
+      const content = await vault.cachedRead(note);
+
       // Find all unique keywords in the note
-      const uniqueKeywords = content.match(/\b\w+\b/g) || []; // add default empty array
-  
-      // Increase the count for each keyword that is not a valid bi-link
+      const uniqueKeywords = content.match(/\b\w+\b/g) || [];
+      
+      // Increase the count for each keyword that is not already in the biLinks array and is not an existing bi-link
       for (const keyword of uniqueKeywords) {
         if (
           !potentialBiLinks.has(keyword) &&
-          !this.biLinks.some((biLink) => biLink.keyword === keyword)
+          !this.biLinks.some((biLink) => biLink.keyword === keyword) &&
+          !existingBiLinks.has(keyword) &&
+          !content.includes(`[[${keyword}]]`)
         ) {
           potentialBiLinks.set(keyword, 1);
         } else {
@@ -76,17 +91,19 @@ export default class ContentLinkerPlugin extends Plugin {
         }
       }
     }
-  
-    this.biLinks = Array.from(potentialBiLinks.entries()).map(([keyword, count]) => ({
-      keyword,
-      count,
-      isSelected: false,
-    }));
-  
+
+    this.biLinks = Array.from(potentialBiLinks.entries()).map(
+      ([keyword, count]) => ({
+        keyword,
+        count,
+        isSelected: false,
+      })
+    );
+
     await this.saveDataToLocalStorage(this.biLinks);
+
     new Notice('Search Finished!');
   }
-  
 }
 
 class ContentLinkerSettingTab extends PluginSettingTab {
@@ -99,13 +116,13 @@ class ContentLinkerSettingTab extends PluginSettingTab {
 
   async display() {
     const { containerEl } = this;
-    
+
     containerEl.empty();
-    
+
     containerEl.createEl('h2', { text: 'Content Linker Settings' });
-    
+
     const table = containerEl.createEl('table', { cls: 'content-linker-table' });
-    
+
     // Create table headers
     const thead = table.createTHead();
     const headerRow = thead.insertRow();
@@ -113,26 +130,60 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     headerRow.insertCell().textContent = 'Count';
     headerRow.insertCell().textContent = 'Keyword';
     headerRow.insertCell().textContent = 'Selected';
-    
+
     // Sort the biLinks array based on count in descending order
     const sortedBiLinks = this.plugin.biLinks.sort((a, b) => b.count - a.count);
-    
+
     // Create table body rows
     const tbody = table.createTBody();
     for (let index = 0; index < Math.min(sortedBiLinks.length, 100); index++) {
-      const { keyword, count, isSelected } = sortedBiLinks[index];
-      const row = tbody.insertRow();
-      row.insertCell().textContent = (index + 1).toString();
-      row.insertCell().textContent = count.toString();
-      row.insertCell().textContent = keyword;
-      row.insertCell().appendChild(this.createCheckbox(keyword, isSelected));
+        const { keyword, count, isSelected } = sortedBiLinks[index];
+
+        // Check if the keyword is already present in the vault as a bi-link
+        const isAlreadyBiLink = await this.isAlreadyBiLink(keyword);
+
+        // If the keyword is not already a bi-link, add it to the table
+        if (!isAlreadyBiLink) {
+            const row = tbody.insertRow();
+            row.insertCell().textContent = (index + 1).toString();
+            row.insertCell().textContent = count.toString();
+            row.insertCell().textContent = keyword;
+            row.insertCell().appendChild(this.createCheckbox(keyword, isSelected));
+        }
     }
-    
+
     const updateButton = containerEl.createEl('button', { text: 'Update Bi-Link For Selected Options' });
     updateButton.addEventListener('click', async () => {
-      await this.updateBiLinks();
+        await this.updateBiLinks();
     });
-  }
+
+    const searchButton = containerEl.createEl('button', { text: 'Search Possible Bi-Directional Link in Vault' });
+    searchButton.addEventListener('click', async () => {
+        await this.plugin.searchPossibleBiLinks();
+        this.display();
+    });
+
+    containerEl.createDiv({ text: 'Click the "Update Bi-Link For Selected Options" button to update the selected bi-links in vault with the bi-link format [[bi-link]].' });
+    containerEl.createDiv({ text: 'Click the "Search Possible Bi-Directional Link in Vault" button to search for potential bi-link keywords and their counts in the vault.' });
+}
+
+async isAlreadyBiLink(keyword: string): Promise<boolean> {
+    const vault = this.plugin.app.vault;
+    const notes = vault.getMarkdownFiles();
+
+    for (const note of notes) {
+        const content = await vault.cachedRead(note);
+
+        // Use regex to find and check if the keyword already exists as a bi-link
+        const regex = new RegExp(`\\[\\[${keyword}\\]\\]`, 'g');
+        if (content.match(regex)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
   createCheckbox(keyword: string, checked: boolean): HTMLElement {
     const checkboxContainer = document.createElement('label');
@@ -140,7 +191,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     checkbox.type = 'checkbox';
     checkbox.checked = checked;
     checkboxContainer.appendChild(checkbox);
-    
+
     checkbox.addEventListener('change', async () => {
       this.plugin.biLinks = this.plugin.biLinks.map((biLink) =>
         biLink.keyword === keyword ? { ...biLink, isSelected: checkbox.checked } : biLink
@@ -166,7 +217,10 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         let content = await vault.read(note);
 
         // Use regex to find and replace the selected keyword with the bi-link format
-        const regex = new RegExp(`\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'g');
+        const regex = new RegExp(`\\b${keyword.replace(
+          /[-/\\^$*+?.()|[\]{}]/g,
+          '\\$&'
+        )}\\b`, 'g');
         content = content.replace(regex, `[[${keyword}]]`);
 
         // Save the updated content back to the note
