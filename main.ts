@@ -274,30 +274,66 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         ? { ...biLink, isSelected: false }
         : biLink
     );
+  
+    // Display the initial progress notice
+    let progressNotice = new Notice('Updating: 0 of 0');
+  
+    // Function to update the progress notice
+    const updateProgressNotice = (current: number, total: number) => {
+      const message = `Updating: ${current} of ${total}`;
+      progressNotice.setMessage(message);
+    };
+  
+    // Simulate an asynchronous operation using setTimeout
+    await new Promise<void>((resolve) => {
+      const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  
+      const updateLoop = async () => {
+        const vault = this.plugin.app.vault;
+        const notes = vault.getMarkdownFiles();
+        const totalNotes = notes.length;
+        let i = 0;
+  
+        for (const selectedBiLink of selectedBiLinks) {
+          const { keyword } = selectedBiLink;
+  
+          for (const note of notes) {
+            let content = await vault.read(note);
+  
+            const regex = new RegExp(
+              `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`,
+              'g'
+            );
+            content = content.replace(regex, `[[${keyword}]]`);
+  
+            await vault.modify(note, content);
+  
+            i++;
+            // Update progress notice
+            updateProgressNotice(i, totalNotes);
+            await delay(1); // Allow UI to update
 
-    for (const selectedBiLink of selectedBiLinks) {
-      const { keyword } = selectedBiLink;
-
-      const vault = this.plugin.app.vault;
-      const notes = vault.getMarkdownFiles();
-
-      for (const note of notes) {
-        let content = await vault.read(note);
-
-        const regex = new RegExp(
-          `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`,
-          'g'
-        );
-        content = content.replace(regex, `[[${keyword}]]`);
-
-        await vault.modify(note, content);
-      }
-    }
-
+            if (i % 100 == 0) {
+              setTimeout(() => {
+                new Notice(progressNotice.noticeEl.getText());
+              }, 3000);
+            }
+          }
+        }
+  
+        resolve();
+      };
+  
+      updateLoop();
+    });
+  
+    // Close the progress notice
+    progressNotice.hide();
+  
     await this.saveDataToLocalStorage();
-
     new Notice('Update Finished!');
   }
+  
 
   async ignoreSelectedOptions() {
     const selectedOptions = this.plugin.biLinks.filter((biLink) => biLink.isSelected);
