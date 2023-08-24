@@ -1,4 +1,5 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { isDeepStrictEqual } from 'util';
 
 interface BiLink {
   keyword: string;
@@ -140,6 +141,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
   }
 
   async display() {
+
     const { containerEl } = this;
 
     containerEl.empty();
@@ -302,6 +304,8 @@ class ContentLinkerSettingTab extends PluginSettingTab {
 
     for (const selectedOption of selectedOptions) {
       const { keyword } = selectedOption;
+      // set the isSelected status to false
+      selectedOption.isSelected = false;
 
       // add selected options to ignored list
       if (!this.plugin.ignoredContent.some((ignoredContent) => ignoredContent.keyword === keyword)) {
@@ -341,12 +345,12 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     const ignoredContentTbody = ignoredContentTable.createTBody();
     for (let i = 0; i < sortedIgnoredList.length; i++) {
       const { keyword, count, isSelected } = sortedIgnoredList[i];
-
+      
       const row = ignoredContentTbody.insertRow();
       row.insertCell(0).textContent = (i + 1).toString();
       row.insertCell(1).textContent = count ? count.toString() : '';
       row.insertCell(2).textContent = keyword;
-      row.insertCell(3).appendChild(this.createIgnoredCheckbox(keyword, false));
+      row.insertCell(3).appendChild(this.createIgnoredCheckbox(keyword, isSelected));
     }
 
     ignoredContentSetting.addExtraButton((buttonEl) => {
@@ -373,48 +377,41 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     checkbox.type = 'checkbox';
     checkbox.checked = checked;
     checkboxContainer.appendChild(checkbox);
-
+  
     checkbox.addEventListener('change', async () => {
       this.plugin.ignoredContent = this.plugin.ignoredContent.map((ignoredContent) =>
         ignoredContent.keyword === keyword ? { ...ignoredContent, isSelected: checkbox.checked } : ignoredContent
       );
-
+  
       await this.saveIgnoredContentToLocalStorage();
     });
-
+  
     return checkboxContainer;
   }
 
   async removeFromIgnoredList() {
-  // Get selected ignored options
-  const selectedIgnoredOptions = this.plugin.ignoredContent.filter(function(ignoredContent) {
-    return ignoredContent.isSelected;
-  });
-
-  for (const selectedIgnoredOption of selectedIgnoredOptions) {
-    const { keyword } = selectedIgnoredOption;
-
-    // Remove from ignored content list
-    this.plugin.ignoredContent = this.plugin.ignoredContent.filter(function(ignoredContent) {
-      return ignoredContent.keyword !== keyword;
+    // Get selected ignored options
+    const selectedIgnoredOptions = this.plugin.ignoredContent.filter((ignoredContent) => {
+      return ignoredContent.isSelected;
     });
-
-    // Add back to bi-link list if it doesn't already exist
-    if (!this.plugin.biLinks.some(function(biLink) {
-      return biLink.keyword === keyword;
-    })) {
-      this.plugin.biLinks.push(selectedIgnoredOption);
-    }
-  }
-
-  await this.saveIgnoredContentToLocalStorage();
-  await this.saveDataToLocalStorage();
-
-  this.display();
-}
-
   
-
+    for (const selectedIgnoredOption of selectedIgnoredOptions) {
+      const { keyword } = selectedIgnoredOption;
+  
+      // Remove from ignored content list
+      const index = this.plugin.ignoredContent.findIndex((ignoredContent) => ignoredContent.keyword === keyword);
+      if (index !== -1) {
+        this.plugin.ignoredContent.splice(index, 1);
+      }
+    }
+  
+    await this.saveIgnoredContentToLocalStorage();
+    await this.saveDataToLocalStorage();
+  
+    this.display(); // Refresh the ignored content list
+  }
+  
+  
   async refreshIgnoredContentList() {
     await this.plugin.loadData();
     this.display();
