@@ -303,6 +303,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     for (const selectedOption of selectedOptions) {
       const { keyword } = selectedOption;
 
+      // add selected options to ignored list
       if (!this.plugin.ignoredContent.some((ignoredContent) => ignoredContent.keyword === keyword)) {
         this.plugin.ignoredContent.push(selectedOption);
       }
@@ -334,15 +335,18 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     ignoredContentHeaderRow.insertCell().textContent = 'Keyword';
     ignoredContentHeaderRow.insertCell().textContent = 'Selected';
 
+    const sortedIgnoredList = this.plugin.ignoredContent
+      .sort((a, b) => b.count - a.count);
+
     const ignoredContentTbody = ignoredContentTable.createTBody();
-    for (let i = 0; i < this.plugin.ignoredContent.length; i++) {
-      const { keyword, count, isSelected } = this.plugin.ignoredContent[i];
+    for (let i = 0; i < sortedIgnoredList.length; i++) {
+      const { keyword, count, isSelected } = sortedIgnoredList[i];
 
       const row = ignoredContentTbody.insertRow();
       row.insertCell(0).textContent = (i + 1).toString();
       row.insertCell(1).textContent = count ? count.toString() : '';
       row.insertCell(2).textContent = keyword;
-      row.insertCell(3).appendChild(this.createCheckbox(keyword, false));
+      row.insertCell(3).appendChild(this.createIgnoredCheckbox(keyword, false));
     }
 
     ignoredContentSetting.addExtraButton((buttonEl) => {
@@ -353,7 +357,63 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     });
 
     containerEl.appendChild(ignoredContentTable);
+
+    const removeButton = containerEl.createEl('button', {
+      text: 'Remove Selected Option(s) from Ignored Content List',
+    });
+    removeButton.addEventListener('click', async () => {
+      // Remove the selected options from the ignored content list
+      this.removeFromIgnoredList();
+    });
   }
+
+  createIgnoredCheckbox(keyword: string, checked: boolean): HTMLElement {
+    const checkboxContainer = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = checked;
+    checkboxContainer.appendChild(checkbox);
+
+    checkbox.addEventListener('change', async () => {
+      this.plugin.ignoredContent = this.plugin.ignoredContent.map((ignoredContent) =>
+        ignoredContent.keyword === keyword ? { ...ignoredContent, isSelected: checkbox.checked } : ignoredContent
+      );
+
+      await this.saveIgnoredContentToLocalStorage();
+    });
+
+    return checkboxContainer;
+  }
+
+  async removeFromIgnoredList() {
+  // Get selected ignored options
+  const selectedIgnoredOptions = this.plugin.ignoredContent.filter(function(ignoredContent) {
+    return ignoredContent.isSelected;
+  });
+
+  for (const selectedIgnoredOption of selectedIgnoredOptions) {
+    const { keyword } = selectedIgnoredOption;
+
+    // Remove from ignored content list
+    this.plugin.ignoredContent = this.plugin.ignoredContent.filter(function(ignoredContent) {
+      return ignoredContent.keyword !== keyword;
+    });
+
+    // Add back to bi-link list if it doesn't already exist
+    if (!this.plugin.biLinks.some(function(biLink) {
+      return biLink.keyword === keyword;
+    })) {
+      this.plugin.biLinks.push(selectedIgnoredOption);
+    }
+  }
+
+  await this.saveIgnoredContentToLocalStorage();
+  await this.saveDataToLocalStorage();
+
+  this.display();
+}
+
+  
 
   async refreshIgnoredContentList() {
     await this.plugin.loadData();
