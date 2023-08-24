@@ -195,7 +195,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
 
       const isAlreadyBiLink = await this.isAlreadyBiLink(keyword);
 
-      if (!isAlreadyBiLink) {
+      if (!isAlreadyBiLink && !this.isIgnored(keyword)) {
         const row = tbody.insertRow();
         row.insertCell().textContent = (index + 1).toString();
         row.insertCell().textContent = count.toString();
@@ -223,6 +223,10 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     this.displayIgnoredContentList();
   }
 
+  isIgnored(keyword: string): boolean {
+    return this.plugin.ignoredContent.some((ignoredContent) => ignoredContent.keyword === keyword);
+  }
+
   async isAlreadyBiLink(keyword: string): Promise<boolean> {
     const vault = this.plugin.app.vault;
     const notes = vault.getMarkdownFiles();
@@ -245,17 +249,17 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     checkbox.type = 'checkbox';
     checkbox.checked = checked;
     checkboxContainer.appendChild(checkbox);
-  
+
     checkbox.addEventListener('change', async () => {
       this.plugin.biLinks = this.plugin.biLinks.map((biLink) =>
         biLink.keyword === keyword
           ? { ...biLink, isSelected: checkbox.checked }
           : biLink
       );
-  
+
       await this.saveDataToLocalStorage();
     });
-  
+
     return checkboxContainer;
   }
 
