@@ -1,6 +1,6 @@
 {
 	"name": "content-linker",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"description": "A plugin for searching and adding bi-directional links to existing content in Obsidian Vault.",
 	"main": "main.js",
 	"scripts": {
