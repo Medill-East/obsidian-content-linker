@@ -26,8 +26,8 @@ export default class ContentLinkerPlugin extends Plugin {
     console.log('Loading Content Linker plugin');
 
     this.addCommand({
-      id: 'search-possible-bi-links',
-      name: 'Search Possible Bi-Links in Vault',
+      id: 'search-possible-bi-directional-links',
+      name: 'Search possible bi-directional links in vault',
       callback: async () => {
         await this.searchPossibleBiLinks();
       },
@@ -148,10 +148,10 @@ class ContentLinkerSettingTab extends PluginSettingTab {
 
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'Content Linker Settings' });
+    // containerEl.createEl('h2', { text: 'Content Linker Settings' });
 
     const searchButton = containerEl.createEl('button', {
-      text: 'Search Possible Bi-Links in Vault',
+      text: 'Search possible bi-directional links in vault',
     });
     searchButton.addEventListener('click', async () => {
       await this.plugin.searchPossibleBiLinks();
@@ -159,7 +159,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     });
 
     new Setting(containerEl)
-      .setName('Number of Results')
+      .setName('Number of results')
       .setDesc('Enter a number:')
       .addText((text) =>
         text
@@ -209,7 +209,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     }
 
     const updateButton = containerEl.createEl('button', {
-      text: 'Update Bi-Link For Selected Options',
+      text: 'Update bi-directional link for selected option(s)',
     });
     updateButton.addEventListener('click', async () => {
       await this.updateBiLinks();
@@ -218,7 +218,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     });
 
     const ignoreButton = containerEl.createEl('button', {
-      text: 'Ignore Selected Option(s)',
+      text: 'Ignore selected option(s)',
     });
     ignoreButton.addEventListener('click', async () => {
       await this.ignoreSelectedOptions();
@@ -400,7 +400,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     const { containerEl } = this;
 
     const ignoredContentSetting = new Setting(containerEl)
-      .setName('Ignored Content List')
+      .setName('Ignored content list')
       .setDesc('Keywords that you want to ignore');
 
     const ignoredContentTable = containerEl.createEl('table', {
@@ -431,17 +431,10 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       );
     }
 
-    ignoredContentSetting.addExtraButton((buttonEl) => {
-      buttonEl.extraSettingsEl.setText('Refresh Ignored Content');
-      buttonEl.onClick(async () => {
-        await this.refreshIgnoredContentList();
-      });
-    });
-
     containerEl.appendChild(ignoredContentTable);
 
     const removeButton = containerEl.createEl('button', {
-      text: 'Remove Selected Option(s) from Ignored Content List',
+      text: 'Remove selected option(s) from ignored content list',
     });
     removeButton.addEventListener('click', async () => {
       // Remove the selected options from the ignored content list
@@ -503,14 +496,6 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     await this.saveDataToVault();
 
     this.display(); // Refresh the ignored content list
-  }
-
-  /**
-   * Refresh the ignored content list.
-   */
-  async refreshIgnoredContentList() {
-    await this.plugin.loadData();
-    this.display();
   }
 
   /**
