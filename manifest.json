@@ -1,10 +1,14 @@
 {
     "id": "obsidian-content-linker",
     "name": "Content Linker",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "minAppVersion": "0.9.7",
     "author": "Medill-East",
-    "tags": ["automation", "plugin", "bi-directional link"],
+    "tags": [
+        "automation",
+        "plugin",
+        "bi-directional link"
+    ],
     "main": "main.js",
     "styles": "styles.css",
     "dependencies": [],
