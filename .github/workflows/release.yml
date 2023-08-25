@@ -1,4 +1,4 @@
-name: Release Obsidian Content Linker Plugin
+name: Release Obsidian Plugin
 
 on:
   push:
