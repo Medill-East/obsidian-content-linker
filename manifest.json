@@ -1,5 +1,5 @@
 {
-    "id": "obsidian-content-linker",
+    "id": "content-linker",
     "name": "Content Linker",
     "version": "1.0.5",
     "minAppVersion": "0.9.7",
@@ -13,6 +13,6 @@
     "styles": "styles.css",
     "dependencies": [],
     "description": "A plugin for searching and adding bi-directional links to existing content in Obsidian Vault.",
-    "homepage": "https://medill-east.github.io/",
+    "homepage": "https://github.com/Medill-East/obsidian-content-linker",
     "license": "MIT"
 }
