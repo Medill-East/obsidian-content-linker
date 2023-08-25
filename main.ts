@@ -35,47 +35,27 @@ export default class ContentLinkerPlugin extends Plugin {
   }
 
   async loadData() {
-    this.biLinks = await this.loadDataFromLocalStorage() || [];
-    this.ignoredContent = await this.loadIgnoredContentFromLocalStorage() || [];
+    this.biLinks = await this.loadDataFromVault('content-linker-plugin') || [];
+    this.ignoredContent = await this.loadDataFromVault('content-linker-ignored-content') || [];
   }
 
-  async loadDataFromLocalStorage(): Promise<BiLink[] | null> {
+  async loadDataFromVault(key: string): Promise<any[] | null> {
     try {
-      const data = window.localStorage.getItem('content-linker-plugin');
-      if (data) {
-        return JSON.parse(data);
+      const content = await this.app.vault.adapter.read(key);
+      if (content) {
+        return JSON.parse(content);
       }
     } catch (error) {
-      console.error('Failed to load data from local storage', error);
+      console.error(`Failed to load data for key '${key}' from vault`, error);
     }
     return [];
   }
 
-  async saveDataToLocalStorage(): Promise<void> {
+  async saveDataToVault(key: string, data: any[]): Promise<void> {
     try {
-      window.localStorage.setItem('content-linker-plugin', JSON.stringify(this.biLinks));
+      await this.app.vault.adapter.write(key, JSON.stringify(data));
     } catch (error) {
-      console.error('Failed to save data to local storage', error);
-    }
-  }
-
-  async loadIgnoredContentFromLocalStorage(): Promise<IgnoredContent[] | null> {
-    try {
-      const data = window.localStorage.getItem('content-linker-ignored-content');
-      if (data) {
-        return JSON.parse(data);
-      }
-    } catch (error) {
-      console.error('Failed to load ignored content from local storage', error);
-    }
-    return [];
-  }
-
-  async saveIgnoredContentToLocalStorage(): Promise<void> {
-    try {
-      window.localStorage.setItem('content-linker-ignored-content', JSON.stringify(this.ignoredContent));
-    } catch (error) {
-      console.error('Failed to save ignored content to local storage', error);
+      console.error(`Failed to save data for key '${key}' to vault`, error);
     }
   }
 
@@ -126,7 +106,7 @@ export default class ContentLinkerPlugin extends Plugin {
       isSelected: false,
     }));
 
-    await this.saveDataToLocalStorage();
+    await this.saveDataToVault('content-linker-plugin', this.biLinks);
 
     new Notice('Search Finished!');
   }
@@ -259,7 +239,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
           : biLink
       );
 
-      await this.saveDataToLocalStorage();
+      await this.saveDataToVault();
     });
 
     return checkboxContainer;
@@ -330,7 +310,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     // Close the progress notice
     progressNotice.hide();
   
-    await this.saveDataToLocalStorage();
+    await this.saveDataToVault();
     new Notice('Update Finished!');
   }
   
@@ -352,8 +332,8 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     // Remove the selected options from the bi-links array
     this.plugin.biLinks = this.plugin.biLinks.filter((biLink) => !biLink.isSelected);
 
-    await this.saveIgnoredContentToLocalStorage();
-    await this.saveDataToLocalStorage();
+    await this.saveIgnoredContentToVault();
+    await this.saveDataToVault();
 
     await this.plugin.searchPossibleBiLinks();
     this.display();
@@ -419,7 +399,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         ignoredContent.keyword === keyword ? { ...ignoredContent, isSelected: checkbox.checked } : ignoredContent
       );
   
-      await this.saveIgnoredContentToLocalStorage();
+      await this.saveIgnoredContentToVault();
     });
   
     return checkboxContainer;
@@ -441,8 +421,8 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       }
     }
   
-    await this.saveIgnoredContentToLocalStorage();
-    await this.saveDataToLocalStorage();
+    await this.saveIgnoredContentToVault();
+    await this.saveDataToVault();
   
     this.display(); // Refresh the ignored content list
   }
@@ -453,11 +433,11 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     this.display();
   }
 
-  async saveDataToLocalStorage(): Promise<void> {
-    await this.plugin.saveDataToLocalStorage();
+  async saveDataToVault() {
+    await this.plugin.saveDataToVault('content-linker-plugin', this.plugin.biLinks);
   }
-
-  async saveIgnoredContentToLocalStorage(): Promise<void> {
-    await this.plugin.saveIgnoredContentToLocalStorage();
+  
+  async saveIgnoredContentToVault() {
+    await this.plugin.saveDataToVault('content-linker-ignored-content', this.plugin.ignoredContent);
   }
 }
