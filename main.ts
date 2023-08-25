@@ -1,5 +1,4 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { isDeepStrictEqual } from 'util';
 
 interface BiLink {
   keyword: string;
