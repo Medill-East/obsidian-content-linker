@@ -18,6 +18,9 @@ export default class ContentLinkerPlugin extends Plugin {
   optionsCount: number = 10;
   ignoredContent: IgnoredContent[] = [];
 
+  /**
+   * Plugin onload event handler.
+   */
   async onload() {
     await this.loadData();
 
@@ -34,11 +37,19 @@ export default class ContentLinkerPlugin extends Plugin {
     this.addSettingTab(new ContentLinkerSettingTab(this.app, this));
   }
 
+  /**
+   * Load data from the vault.
+   */
   async loadData() {
     this.biLinks = await this.loadDataFromVault('content-linker-plugin') || [];
     this.ignoredContent = await this.loadDataFromVault('content-linker-ignored-content') || [];
   }
 
+  /**
+   * Load data from the vault.
+   * @param key - The key for the data.
+   * @returns The loaded data or null if it does not exist.
+   */
   async loadDataFromVault(key: string): Promise<any[] | null> {
     try {
       const content = await this.app.vault.adapter.read(key);
@@ -51,6 +62,11 @@ export default class ContentLinkerPlugin extends Plugin {
     return [];
   }
 
+  /**
+   * Save data to the vault.
+   * @param key - The key for the data.
+   * @param data - The data to be saved.
+   */
   async saveDataToVault(key: string, data: any[]): Promise<void> {
     try {
       await this.app.vault.adapter.write(key, JSON.stringify(data));
@@ -59,6 +75,9 @@ export default class ContentLinkerPlugin extends Plugin {
     }
   }
 
+  /**
+   * Search for possible bi-links in the vault.
+   */
   async searchPossibleBiLinks() {
     const vault = this.app.vault;
     const notes = vault.getMarkdownFiles();
@@ -88,7 +107,9 @@ export default class ContentLinkerPlugin extends Plugin {
           !this.biLinks.some((biLink) => biLink.keyword === keyword) &&
           !existingBiLinks.has(keyword) &&
           !content.includes(`[[${keyword}]]`) &&
-          !this.ignoredContent.some((ignoredContent) => ignoredContent.keyword === keyword)
+          !this.ignoredContent.some(
+            (ignoredContent) => ignoredContent.keyword === keyword
+          )
         ) {
           potentialBiLinks.set(keyword, 1);
         } else {
@@ -100,11 +121,13 @@ export default class ContentLinkerPlugin extends Plugin {
       }
     }
 
-    this.biLinks = Array.from(potentialBiLinks.entries()).map(([keyword, count]) => ({
-      keyword,
-      count,
-      isSelected: false,
-    }));
+    this.biLinks = Array.from(potentialBiLinks.entries()).map(
+      ([keyword, count]) => ({
+        keyword,
+        count,
+        isSelected: false,
+      })
+    );
 
     await this.saveDataToVault('content-linker-plugin', this.biLinks);
 
@@ -205,10 +228,22 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     this.displayIgnoredContentList();
   }
 
+  /**
+   * Check if a keyword is ignored.
+   * @param keyword - The keyword to check.
+   * @returns True if ignored, false otherwise.
+   */
   isIgnored(keyword: string): boolean {
-    return this.plugin.ignoredContent.some((ignoredContent) => ignoredContent.keyword === keyword);
+    return this.plugin.ignoredContent.some(
+      (ignoredContent) => ignoredContent.keyword === keyword
+    );
   }
 
+  /**
+   * Check if a keyword is already a bi-link in any note.
+   * @param keyword - The keyword to check.
+   * @returns True if it is already a bi-link, false otherwise.
+   */
   async isAlreadyBiLink(keyword: string): Promise<boolean> {
     const vault = this.plugin.app.vault;
     const notes = vault.getMarkdownFiles();
@@ -225,6 +260,12 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     return false;
   }
 
+  /**
+   * Create a checkbox element for a bi-link option.
+   * @param keyword - The keyword for the bi-link.
+   * @param checked - Whether the checkbox is selected.
+   * @returns The created checkbox element.
+   */
   createCheckbox(keyword: string, checked: boolean): HTMLElement {
     const checkboxContainer = document.createElement('label');
     const checkbox = document.createElement('input');
@@ -245,6 +286,9 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     return checkboxContainer;
   }
 
+  /**
+   * Update the bi-links in notes based on the selected options.
+   */
   async updateBiLinks() {
     const selectedBiLinks = this.plugin.biLinks.filter(
       (biLink) => biLink.isSelected
@@ -254,40 +298,41 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         ? { ...biLink, isSelected: false }
         : biLink
     );
-  
+
     // Display the initial progress notice
     let progressNotice = new Notice('Updating: 0 of 0');
-  
+
     // Function to update the progress notice
     const updateProgressNotice = (current: number, total: number) => {
       const message = `Updating: ${current} of ${total}`;
       progressNotice.setMessage(message);
     };
-  
+
     // Simulate an asynchronous operation using setTimeout
     await new Promise<void>((resolve) => {
-      const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-  
+      const delay = (ms: number) =>
+        new Promise((res) => setTimeout(res, ms));
+
       const updateLoop = async () => {
         const vault = this.plugin.app.vault;
         const notes = vault.getMarkdownFiles();
         const totalNotes = notes.length;
         let i = 0;
-  
+
         for (const selectedBiLink of selectedBiLinks) {
           const { keyword } = selectedBiLink;
-  
+
           for (const note of notes) {
             let content = await vault.read(note);
-  
+
             const regex = new RegExp(
               `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`,
               'g'
             );
             content = content.replace(regex, `[[${keyword}]]`);
-  
+
             await vault.modify(note, content);
-  
+
             i++;
             // Update progress notice
             updateProgressNotice(i, totalNotes);
@@ -300,23 +345,27 @@ class ContentLinkerSettingTab extends PluginSettingTab {
             }
           }
         }
-  
+
         resolve();
       };
-  
+
       updateLoop();
     });
-  
+
     // Close the progress notice
     progressNotice.hide();
-  
+
     await this.saveDataToVault();
     new Notice('Update Finished!');
   }
-  
 
+  /**
+   * Ignore the selected bi-link options.
+   */
   async ignoreSelectedOptions() {
-    const selectedOptions = this.plugin.biLinks.filter((biLink) => biLink.isSelected);
+    const selectedOptions = this.plugin.biLinks.filter(
+      (biLink) => biLink.isSelected
+    );
 
     for (const selectedOption of selectedOptions) {
       const { keyword } = selectedOption;
@@ -324,13 +373,19 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       selectedOption.isSelected = false;
 
       // add selected options to ignored list
-      if (!this.plugin.ignoredContent.some((ignoredContent) => ignoredContent.keyword === keyword)) {
+      if (
+        !this.plugin.ignoredContent.some(
+          (ignoredContent) => ignoredContent.keyword === keyword
+        )
+      ) {
         this.plugin.ignoredContent.push(selectedOption);
       }
     }
 
     // Remove the selected options from the bi-links array
-    this.plugin.biLinks = this.plugin.biLinks.filter((biLink) => !biLink.isSelected);
+    this.plugin.biLinks = this.plugin.biLinks.filter(
+      (biLink) => !biLink.isSelected
+    );
 
     await this.saveIgnoredContentToVault();
     await this.saveDataToVault();
@@ -339,6 +394,9 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     this.display();
   }
 
+  /**
+   * Display the ignored content list.
+   */
   async displayIgnoredContentList() {
     const { containerEl } = this;
 
@@ -346,7 +404,9 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       .setName('Ignored Content List')
       .setDesc('Keywords that you want to ignore');
 
-    const ignoredContentTable = containerEl.createEl('table', { cls: 'content-linker-ignored-content-table' });
+    const ignoredContentTable = containerEl.createEl('table', {
+      cls: 'content-linker-ignored-content-table',
+    });
 
     const ignoredContentThead = ignoredContentTable.createTHead();
     const ignoredContentHeaderRow = ignoredContentThead.insertRow();
@@ -355,18 +415,21 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     ignoredContentHeaderRow.insertCell().textContent = 'Keyword';
     ignoredContentHeaderRow.insertCell().textContent = 'Selected';
 
-    const sortedIgnoredList = this.plugin.ignoredContent
-      .sort((a, b) => b.count - a.count);
+    const sortedIgnoredList = this.plugin.ignoredContent.sort(
+      (a, b) => b.count - a.count
+    );
 
     const ignoredContentTbody = ignoredContentTable.createTBody();
     for (let i = 0; i < sortedIgnoredList.length; i++) {
       const { keyword, count, isSelected } = sortedIgnoredList[i];
-      
+
       const row = ignoredContentTbody.insertRow();
       row.insertCell(0).textContent = (i + 1).toString();
       row.insertCell(1).textContent = count ? count.toString() : '';
       row.insertCell(2).textContent = keyword;
-      row.insertCell(3).appendChild(this.createIgnoredCheckbox(keyword, isSelected));
+      row.insertCell(3).appendChild(
+        this.createIgnoredCheckbox(keyword, isSelected)
+      );
     }
 
     ignoredContentSetting.addExtraButton((buttonEl) => {
@@ -387,57 +450,87 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     });
   }
 
+  /**
+   * Create a checkbox element for an ignored option.
+   * @param keyword - The keyword for the ignored option.
+   * @param checked - Whether the checkbox is selected.
+   * @returns The created checkbox element.
+   */
   createIgnoredCheckbox(keyword: string, checked: boolean): HTMLElement {
     const checkboxContainer = document.createElement('label');
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = checked;
     checkboxContainer.appendChild(checkbox);
-  
+
     checkbox.addEventListener('change', async () => {
-      this.plugin.ignoredContent = this.plugin.ignoredContent.map((ignoredContent) =>
-        ignoredContent.keyword === keyword ? { ...ignoredContent, isSelected: checkbox.checked } : ignoredContent
+      this.plugin.ignoredContent = this.plugin.ignoredContent.map(
+        (ignoredContent) =>
+          ignoredContent.keyword === keyword
+            ? { ...ignoredContent, isSelected: checkbox.checked }
+            : ignoredContent
       );
-  
+
       await this.saveIgnoredContentToVault();
     });
-  
+
     return checkboxContainer;
   }
 
+  /**
+   * Remove the selected options from the ignored content list.
+   */
   async removeFromIgnoredList() {
     // Get selected ignored options
-    const selectedIgnoredOptions = this.plugin.ignoredContent.filter((ignoredContent) => {
-      return ignoredContent.isSelected;
-    });
-  
+    const selectedIgnoredOptions = this.plugin.ignoredContent.filter(
+      (ignoredContent) => {
+        return ignoredContent.isSelected;
+      }
+    );
+
     for (const selectedIgnoredOption of selectedIgnoredOptions) {
       const { keyword } = selectedIgnoredOption;
-  
+
       // Remove from ignored content list
-      const index = this.plugin.ignoredContent.findIndex((ignoredContent) => ignoredContent.keyword === keyword);
+      const index = this.plugin.ignoredContent.findIndex(
+        (ignoredContent) => ignoredContent.keyword === keyword
+      );
       if (index !== -1) {
         this.plugin.ignoredContent.splice(index, 1);
       }
     }
-  
+
     await this.saveIgnoredContentToVault();
     await this.saveDataToVault();
-  
+
     this.display(); // Refresh the ignored content list
   }
-  
-  
+
+  /**
+   * Refresh the ignored content list.
+   */
   async refreshIgnoredContentList() {
     await this.plugin.loadData();
     this.display();
   }
 
+  /**
+   * Save the bi-links data to the vault.
+   */
   async saveDataToVault() {
-    await this.plugin.saveDataToVault('content-linker-plugin', this.plugin.biLinks);
+    await this.plugin.saveDataToVault(
+      'content-linker-plugin',
+      this.plugin.biLinks
+    );
   }
-  
+
+  /**
+   * Save the ignored content data to the vault.
+   */
   async saveIgnoredContentToVault() {
-    await this.plugin.saveDataToVault('content-linker-ignored-content', this.plugin.ignoredContent);
+    await this.plugin.saveDataToVault(
+      'content-linker-ignored-content',
+      this.plugin.ignoredContent
+    );
   }
 }
