@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/Medill-East/obsidian-content-linker/compare/1.1.0...1.1.1) (2023-08-26)
+
+
+### Bug Fixes
+
+* remove header from setting page ([f366a0f](https://github.com/Medill-East/obsidian-content-linker/commit/f366a0fbd9f461c2c8f7b6040ffd3bed1eb86054))
+
 ## [1.1.0](https://github.com/Medill-East/obsidian-content-linker/compare/1.0.7...1.1.0) (2023-08-26)
 
 
