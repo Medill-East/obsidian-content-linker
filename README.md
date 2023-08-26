@@ -35,20 +35,24 @@ For English, please see [English](#english).
 
 ## 如何使用
 
-![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202308252145069.png)
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202308261639510.png)
 
-1. 搜索潜在双链
+1. 排除特定范围下的笔记
+- 可以通过输入相对路径来排除特定范围下的笔记，防止本插件对该路径下的内容进行改动
+  - 如截图中输入的相对路径是 `PKM/`，则会将库中 PKM 文件夹及其下子文件夹中的内容都排除在搜索/更改范围外
+
+2. 搜索潜在双链
 - （建议）直接使用设置面板中的“Search Possible Bi-Links in Vault”按钮来搜索库中潜在的双向链接
   - 在设置面板中还可以设置想要显示的结果数量（但若是将其中的结果使用本插件更新为双链形式后，就不再显示在结果列表中，但仍然占用数量，详见[已知问题](#known-issues-zh)部分。
 - 也可以在编辑模式中调用指令“Content Linker: Search Possible Bi-Links in Vault”来进行搜索
 
-2. 更新所选项为双链形式
+3. 更新所选项为双链形式
 - 使用“Update Bi-Link For Selected Options”按钮可以将列表中所选中的选项在库中的原文位置更新为双链形式
 
-3. 可以将不想使其出现在搜索结果中的内容加入忽略列表中
+4. 可以将不想使其出现在搜索结果中的内容加入忽略列表中
 - 使用“Ignore Selected Options(s)”按钮即可将潜在双链列表中的所选项移除并加入忽略列表中
 
-4. 可以将选项从忽略列表中移除，使其可以重新出现在潜在双链内容列表中 
+5. 可以将选项从忽略列表中移除，使其可以重新出现在潜在双链内容列表中 
 - 使用“Remove Selected Option(s) from Ignored Content List”按钮即可将所选项从忽略列表中移除，并使其可以重新出现在潜在双链内容列表中
 
 ## 背后原理
@@ -117,7 +121,11 @@ It is recommended to use this plugin together with the Various Complements (http
 
 ## How to Use
 
-![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202308252145069.png)
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202308261639510.png)
+
+1. Exclude Notes within a Specific Scope
+- You can exclude notes within a specific scope by inputting a relative path, preventing this plugin from making changes to content within that path.
+  - For example, if the relative path input, as shown in the screenshot, is PKM/, it will exclude the content within the PKM folder and its subfolders in the vault from the scope of searching/updating.
 
 1. Search for Potential Bi-Directional Links
 - (Recommended) Use the "Search Possible Bi-Links in Vault" button in the settings panel to search for potential bi-directional links in the vault.
