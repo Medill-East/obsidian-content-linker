@@ -152,7 +152,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
 
     containerEl.empty();
 
-    containerEl.createEl('h3', { text: 'Exclude notes with relative path' });
+    // containerEl.createEl('h3', { text: 'Exclude notes with relative path' });
     const relativePathExclusion = new Setting(containerEl)
       .setName('Relative path of excluded notes')
       .setDesc('Enter a relative path: ')
