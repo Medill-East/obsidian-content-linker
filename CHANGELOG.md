@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/Medill-East/obsidian-content-linker/compare/1.0.7...1.1.0) (2023-08-26)
+
+
+### Features
+
+* Enable user to exclude content inside a relative path to avoid being searched or modified ([3122d3b](https://github.com/Medill-East/obsidian-content-linker/commit/3122d3b892f3d1719dfbde03e831feb15bf414df))
+
 ### [1.0.7](https://github.com/Medill-East/obsidian-content-linker/compare/1.0.6...1.0.7) (2023-08-25)
 
 ### [1.0.6](https://github.com/Medill-East/obsidian-content-linker/compare/1.0.5...1.0.6) (2023-08-25)
