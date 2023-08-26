@@ -55,7 +55,7 @@ For English, please see [English](#english).
 5. 可以将选项从忽略列表中移除，使其可以重新出现在潜在双链内容列表中 
 - 使用“Remove Selected Option(s) from Ignored Content List”按钮即可将所选项从忽略列表中移除，并使其可以重新出现在潜在双链内容列表中
 
-## 背后原理
+## 开发过程
 
 大致是通过与 codeGPT 交流，使其基于以下 prompt 来实现代码：
 
@@ -74,6 +74,8 @@ For English, please see [English](#english).
 8. 当用户点击设置页面中的“Ignore Selected Option(s)”按钮后，遍历 5. 中用户所选择的所有选项，将这些选项从潜在双链关键字列表中排除，并将这些选项加入 Ignored Content List，并在 Ignored Content List 中显示。对 Ignored Content List 中的内容根据其第二列的 Count 数量进行倒序排列。
 9. 当用户点击设置页面中的“Remove From Ignored Content List”按钮时，遍历 7. 中所选的所有选项，并将这些选项重新加入潜在双链关键字列表。
 ```
+
+如感兴趣，可以看[开发回顾](https://medill-east.github.io/2023/08/26/20230826-obsidian-content-linker-plugin-development-review/)。
 
 ## [已知问题](#known-issues-zh)
 
@@ -141,7 +143,7 @@ It is recommended to use this plugin together with the Various Complements (http
 4. Remove Options from Ignored Content List to Include in Search Again
 - Use the "Remove Selected Option(s) from Ignored Content List" button to remove selected options from the ignore list, allowing them to reappear in the list of potential bi-link content.
 
-## Underlying Principle
+## How it is developed
 
 The general approach involves interacting with codeGPT and using the following prompt (in chinese, below is a translated version) to implement the code:
 
@@ -160,6 +162,8 @@ Please analyze each piece of code to determine if it can achieve the following f
 8. When the user clicks the "Ignore Selected Option(s)" button on the settings page, iterate through all the selected options from 5. Exclude these options from the potential bi-link keyword list, add them to the Ignored Content List, and display them within it. The contents of the Ignored Content List should be sorted in descending order based on the Count in the second column;
 9. When the user clicks the "Remove From Ignored Content List" button on the settings page, iterate through all the selected options from 7 and re-add them to the potential bi-link keyword list.
 ```
+
+If interested, you can check out the [development review (in chinese)](https://medill-east.github.io/2023/08/26/20230826-obsidian-content-linker-plugin-development-review/).
 
 ## Known Issues
 
