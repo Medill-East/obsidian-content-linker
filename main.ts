@@ -16,6 +16,7 @@ export default class ContentLinkerPlugin extends Plugin {
   biLinks: BiLink[] = [];
   optionsCount: number = 10;
   ignoredContent: IgnoredContent[] = [];
+  relativePathOfExcludedNotes: string | any[] = '';
 
   /**
    * Plugin onload event handler.
@@ -42,6 +43,7 @@ export default class ContentLinkerPlugin extends Plugin {
   async loadData() {
     this.biLinks = await this.loadDataFromVault('content-linker-plugin') || [];
     this.ignoredContent = await this.loadDataFromVault('content-linker-ignored-content') || [];
+    this.relativePathOfExcludedNotes = await this.loadDataFromVault('relative-path-of-excluded-notes') || '';
   }
 
   /**
@@ -66,7 +68,7 @@ export default class ContentLinkerPlugin extends Plugin {
    * @param key - The key for the data.
    * @param data - The data to be saved.
    */
-  async saveDataToVault(key: string, data: any[]): Promise<void> {
+  async saveDataToVault(key: string, data: any | any[]): Promise<void> {
     try {
       await this.app.vault.adapter.write(key, JSON.stringify(data));
     } catch (error) {
@@ -79,7 +81,9 @@ export default class ContentLinkerPlugin extends Plugin {
    */
   async searchPossibleBiLinks() {
     const vault = this.app.vault;
-    const notes = vault.getMarkdownFiles();
+
+    const notes = this.relativePathOfExcludedNotes === '' ? vault.getMarkdownFiles() : vault.getMarkdownFiles().filter(file => !file.path.includes(this.relativePathOfExcludedNotes.toString()));
+    
     const existingBiLinks = new Set<string>();
 
     for (const note of notes) {
@@ -148,7 +152,17 @@ class ContentLinkerSettingTab extends PluginSettingTab {
 
     containerEl.empty();
 
-    // containerEl.createEl('h2', { text: 'Content Linker Settings' });
+    containerEl.createEl('h3', { text: 'Exclude notes with relative path' });
+    const relativePathExclusion = new Setting(containerEl)
+      .setName('Relative path of excluded notes')
+      .setDesc('Enter a relative path: ')
+    relativePathExclusion.addText(input => input
+                                    .setPlaceholder('Relative path of exluded notes')
+                                    .setValue(this.plugin.relativePathOfExcludedNotes.toString())
+                                    .onChange(async (value) => {
+                                      this.plugin.relativePathOfExcludedNotes = value
+                                      await this.plugin.saveDataToVault('relative-path-of-excluded-notes', this.plugin.relativePathOfExcludedNotes);
+                                    }))
 
     const searchButton = containerEl.createEl('button', {
       text: 'Search possible bi-directional links in vault',
@@ -285,9 +299,6 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     return checkboxContainer;
   }
 
-  /**
-   * Update the bi-links in notes based on the selected options.
-   */
   async updateBiLinks() {
     const selectedBiLinks = this.plugin.biLinks.filter(
       (biLink) => biLink.isSelected
@@ -297,66 +308,80 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         ? { ...biLink, isSelected: false }
         : biLink
     );
-
+  
     // Display the initial progress notice
     let progressNotice = new Notice('Updating: 0 of 0');
-
+  
     // Function to update the progress notice
     const updateProgressNotice = (current: number, total: number) => {
       const message = `Updating: ${current} of ${total}`;
       progressNotice.setMessage(message);
     };
-
+  
     // Simulate an asynchronous operation using setTimeout
     await new Promise<void>((resolve) => {
       const delay = (ms: number) =>
         new Promise((res) => setTimeout(res, ms));
-
+  
       const updateLoop = async () => {
         const vault = this.plugin.app.vault;
         const notes = vault.getMarkdownFiles();
         const totalNotes = notes.length;
         let i = 0;
-
+  
         for (const selectedBiLink of selectedBiLinks) {
           const { keyword } = selectedBiLink;
-
+  
           for (const note of notes) {
-            let content = await vault.read(note);
-
-            const regex = new RegExp(
-              `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`,
-              'g'
-            );
-            content = content.replace(regex, `[[${keyword}]]`);
-
-            await vault.modify(note, content);
-
-            i++;
-            // Update progress notice
-            updateProgressNotice(i, totalNotes);
-            await delay(1); // Allow UI to update
-
-            if (i % 100 == 0) {
-              setTimeout(() => {
-                new Notice(progressNotice.noticeEl.getText());
-              }, 3000);
+            if (!this.isExcluded(note.path)) {
+              let content = await vault.read(note);
+  
+              const regex = new RegExp(
+                `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`,
+                'g'
+              );
+              content = content.replace(regex, `[[${keyword}]]`);
+  
+              await vault.modify(note, content);
+  
+              i++;
+              // Update progress notice
+              updateProgressNotice(i, totalNotes);
+              await delay(1); // Allow UI to update
+  
+              if (i % 100 == 0) {
+                setTimeout(() => {
+                  new Notice(progressNotice.noticeEl.getText());
+                }, 3000);
+              }
             }
           }
         }
-
+  
         resolve();
       };
-
+  
       updateLoop();
     });
-
+  
     // Close the progress notice
     progressNotice.hide();
-
+  
     await this.saveDataToVault();
     new Notice('Update Finished!');
   }
+  
+  /**
+   * Check if a note path is excluded.
+   * @param path - The path of the note.
+   * @returns True if the note path is excluded, false otherwise.
+   */
+  isExcluded(path: string): boolean {
+    if (this.plugin.relativePathOfExcludedNotes === '') return false;
+  
+    return path.includes(this.plugin.relativePathOfExcludedNotes.toString());
+  }
+  
 
   /**
    * Ignore the selected bi-link options.
