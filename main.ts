@@ -134,7 +134,7 @@ export default class ContentLinkerPlugin extends Plugin {
 
     await this.saveDataToVault('content-linker-plugin', this.biLinks);
 
-    new Notice('Search Finished!');
+    new Notice('Search finished!');
   }
 }
 
@@ -368,7 +368,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     progressNotice.hide();
   
     await this.saveDataToVault();
-    new Notice('Update Finished!');
+    new Notice('Update finished!');
   }
   
   /**

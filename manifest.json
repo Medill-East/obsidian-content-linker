@@ -4,15 +4,11 @@
     "version": "1.1.1",
     "minAppVersion": "0.9.7",
     "author": "Medill-East",
-    "tags": [
-        "automation",
-        "plugin",
-        "bi-directional link"
-    ],
+    "authorUrl": "https://medill-east.github.io/",
     "main": "main.js",
     "styles": "styles.css",
     "dependencies": [],
     "description": "A plugin for searching and adding bi-directional links to existing content in Obsidian Vault.",
-    "homepage": "https://github.com/Medill-East/obsidian-content-linker",
+    "isDesktopOnly": true,
     "license": "MIT"
 }
