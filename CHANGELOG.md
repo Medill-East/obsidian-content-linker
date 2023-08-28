@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.2](https://github.com/Medill-East/obsidian-content-linker/compare/1.1.1...1.1.2) (2023-08-28)
+
+
+### Bug Fixes
+
+* update manifest and fix typo ([c136557](https://github.com/Medill-East/obsidian-content-linker/commit/c1365574481009ed0c35ba3999277383091622fa))
+
 ### [1.1.1](https://github.com/Medill-East/obsidian-content-linker/compare/1.1.0...1.1.1) (2023-08-26)
 
 
