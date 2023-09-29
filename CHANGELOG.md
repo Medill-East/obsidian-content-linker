@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/Medill-East/obsidian-content-linker/compare/1.1.2...1.2.0) (2023-09-29)
+
+
+### Features
+
+* use official saveData() and loadData() function to manage data ([53f43cb](https://github.com/Medill-East/obsidian-content-linker/commit/53f43cb29868701d25be15130ec0df009beffac9))
+
 ### [1.1.2](https://github.com/Medill-East/obsidian-content-linker/compare/1.1.1...1.1.2) (2023-08-28)
 
 
