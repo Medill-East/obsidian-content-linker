@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/Medill-East/obsidian-content-linker/compare/1.2.0...1.3.0) (2023-09-29)
+
+
+### Features
+
+* add function to manage already bi-directional-linked content ([3e70f6e](https://github.com/Medill-East/obsidian-content-linker/commit/3e70f6eee044efccfb03ccc87b01b346dba85a6d))
+
 ## [1.2.0](https://github.com/Medill-East/obsidian-content-linker/compare/1.1.2...1.2.0) (2023-09-29)
 
 
