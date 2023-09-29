@@ -24,9 +24,9 @@ For English, please see [English](#english).
 - 库中已有大量笔记，但其中还存在大量需要添加双链的内容
 - 库中已有大量笔记，想要寻找其中潜在的双向链接
 
-建议搭配 Various Complements (https://github.com/tadashi-aikawa/obsidian-various-complements-plugin) 和 Sidekick (https://github.com/hadynz/obsidian-sidekick) 插件一同使用：
+建议搭配 Various Complements (https://github.com/tadashi-aikawa/obsidian-various-complements-plugin) 插件一同使用：
 - 使用本插件先建立库中双链
-- 使用 Various Complements 和 Sidekick 在未来输入时基于已有双链快速输入/建立双链
+- 使用 Various Complements 在未来输入时基于已有双链快速输入双链
 
 ## 安装
 
@@ -35,7 +35,8 @@ For English, please see [English](#english).
 
 ## 如何使用
 
-![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202308261639510.png)
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202309292244046.png)
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202309292246905.png)
 
 1. 排除特定范围下的笔记
 - 可以通过输入相对路径来排除特定范围下的笔记，防止本插件对该路径下的内容进行改动
@@ -54,6 +55,10 @@ For English, please see [English](#english).
 
 5. 可以将选项从忽略列表中移除，使其可以重新出现在潜在双链内容列表中 
 - 使用“Remove Selected Option(s) from Ignored Content List”按钮即可将所选项从忽略列表中移除，并使其可以重新出现在潜在双链内容列表中
+
+6. 可以看到当前库中目前已经建立了双链的内容，可以将其转换为非双链形式
+- 使用“Remove bi-directional links for selected option(s)”按钮即可将所选项从双链形式转换为非双链形式
+- 这里的 Count 的计数包括了双链 + 非双链形式的总数。非双链形式指的是虽然该内容存在双链的形式，但可能并非所有的该关键词都是双链形式。如同时存在“Content”和“[[Content]]”形式的内容，那么两种形式都会被计数。
 
 ## 开发过程
 
@@ -79,9 +84,10 @@ For English, please see [English](#english).
 
 ## [已知问题](#known-issues-zh)
 
-- 结果列表中的数量显示可能不足
-  - 理论上讲，这是由于使用该插件将潜在双链列表中的内容更新为双链形式后，没能将其从潜在双链列表中去除，然后没能将其重新加入已有双链列表中
-  - 但因为我代码能力有限，大致看了一下实现代码感觉已经做了上面的事，因为不影响使用，所以不再费心
+- 结果列表中的序号显示有歧义
+  - Possible bi-directional content 和 Linked content list 中显示的 No. 是其在整个库中所出现频率的排名
+  - Ignored content list 的 No. 是新的序号，无其他意义
+  - 因为不影响使用，所以不再费心
 
 - 搜索结果中没有将语气词等排除
   - 易用性不够好，但因为不影响使用，所以不再费心
@@ -112,9 +118,9 @@ This plugin is suitable for the following scenarios:
 - There are numerous notes in the vault, but there is still a substantial amount of content that needs bidirectional linking.
 - There are numerous notes in the vault, and you want to discover potential bidirectional links among them.
 
-It is recommended to use this plugin together with the Various Complements (https://github.com/tadashi-aikawa/obsidian-various-complements-plugin) and Sidekick (https://github.com/hadynz/obsidian-sidekick) plugins:
+It is recommended to use this plugin together with the Various Complements (https://github.com/tadashi-aikawa/obsidian-various-complements-plugin) plugins:
 - Utilize this plugin to establish bidirectional links within the vault.
-- Utilize Various Complements and Sidekick in the future to quickly input or establish bidirectional links based on the existing ones.
+- Utilize Various Complements in the future to quickly input bidirectional links based on the existing ones.
 
 ## Installation
 
@@ -123,25 +129,31 @@ It is recommended to use this plugin together with the Various Complements (http
 
 ## How to Use
 
-![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202308261639510.png)
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202309292244046.png)
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202309292246905.png)
 
 1. Exclude Notes within a Specific Scope
 - You can exclude notes within a specific scope by inputting a relative path, preventing this plugin from making changes to content within that path.
   - For example, if the relative path input, as shown in the screenshot, is PKM/, it will exclude the content within the PKM folder and its subfolders in the vault from the scope of searching/updating.
 
-1. Search for Potential Bi-Directional Links
+2. Search for Potential Bi-Directional Links
 - (Recommended) Use the "Search Possible Bi-Links in Vault" button in the settings panel to search for potential bi-directional links in the vault.
   - You can also specify the number of results you want to display in the settings panel (if you update any of these results to bi-link format using this plugin, they will no longer appear in the results list, but they will still be count into the total number, see [Known Issues](#known-issues) section for details).
 - Alternatively, you can invoke the command "Content Linker: Search Possible Bi-Links in Vault" in edit mode to perform the search.
 
-2. Update Selected Options to Bi-Link Format
+3. Update Selected Options to Bi-Link Format
 - Use the "Update Bi-Link For Selected Options" button to convert the selected options in the list to bi-link format in their original locations in the vault.
 
-3. Add Options to Ignore List to Exclude from Search Results
+4. Add Options to Ignore List to Exclude from Search Results
 - Use the "Ignore Selected Option(s)" button to remove the selected options from the potential bi-link list and add them to the ignore list.
 
-4. Remove Options from Ignored Content List to Include in Search Again
+5. Remove Options from Ignored Content List to Include in Search Again
 - Use the "Remove Selected Option(s) from Ignored Content List" button to remove selected options from the ignore list, allowing them to reappear in the list of potential bi-link content.
+
+6. You can see the content that is already bi-directional-linked in your vault, and can convert them back to non-bi-directional-link format
+
+Use the "Remove bi-directional links for selected option(s)" button to convert selected items from bi-directional-link format to non-bi-directional-link format.
+The Count here includes the total count of both bi-link and non-bi-link forms. E.g., "Content" and "[[Content]]" are counted.
 
 ## How it is developed
 
@@ -167,9 +179,10 @@ If interested, you can check out the [development review (in chinese)](https://m
 
 ## Known Issues
 
-- Number of displayed options in the results list might be inaccurate.
-  - In theory, this might be due to the fact that when using the plugin to update potential bi-link content to bi-link format, it might not properly remove them from the potential bi-link list and re-add them to the existing bi-link list.
-  - However, as my coding abilities are limited, I've examined the code and it seems like the above steps are being taken, and since this issue doesn't affect functionality, I haven't spent more effort on it.
+- There is ambiguity in the numbering displayed in the result lists:
+  - The "No." displayed in the "Possible Bi-Directional Content" and "Linked Content List" represents their ranking in terms of frequency across the entire vault.
+  - The "No." in the "Ignored Content List" is a new serial number with no other significance.
+  - Since it doesn't affect usability, will not address this.
 
 - The search results might not exclude particles and similar elements.
   - This could affect usability, but since it doesn't impact functionality significantly, I haven't took time on addressing it further.
