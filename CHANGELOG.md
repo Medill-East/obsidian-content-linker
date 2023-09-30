@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.1](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.0...1.3.1) (2023-09-30)
+
+
+### Bug Fixes
+
+* support to install from community plugin store directly, update readme file :) ([d3d02af](https://github.com/Medill-East/obsidian-content-linker/commit/d3d02afbb42180be929b5aadf383cfc6d49b4f6a))
+
 ## [1.3.0](https://github.com/Medill-East/obsidian-content-linker/compare/1.2.0...1.3.0) (2023-09-29)
 
 
