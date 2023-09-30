@@ -670,5 +670,4 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       this.notice = null;
     }
   }
-  
 }

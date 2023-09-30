@@ -85,6 +85,10 @@ For English, please see [English](#english) below.
 
 ## [已知问题](#known-issues-zh)
 
+- 搜索性能问题
+  - 目前的搜索需要对库进行遍历，所以会有比较大的性能消耗
+  - 如要优化会涉及较多重构，不一定会进行优化
+
 - 结果列表中的序号显示有歧义
   - Possible bi-directional content 和 Linked content list 中显示的 No. 是其在整个库中所出现频率的排名
   - Ignored content list 的 No. 是新的序号，无其他意义
@@ -180,6 +184,10 @@ Please analyze each piece of code to determine if it can achieve the following f
 If interested, you can check out the [development review (in chinese)](https://medill-east.github.io/2023/08/26/20230826-obsidian-content-linker-plugin-development-review/).
 
 ## Known Issues
+
+- Performance issue on searching
+  - Current searching algorithm needs to search all files in vault, cost much
+  - Optimization needs to do refactory, not sure whether I have time to do that :(
 
 - There is ambiguity in the numbering displayed in the result lists:
   - The "No." displayed in the "Possible Bi-Directional Content" and "Linked Content List" represents their ranking in terms of frequency across the entire vault.
