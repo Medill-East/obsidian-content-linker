@@ -12,17 +12,22 @@ interface IgnoredContent {
   isSelected: boolean;
 }
 
+interface ContentLinkerPluginSettings {
+  biLinks: BiLink[];
+  optionsCount: number;
+  ignoredContent: IgnoredContent[];
+  relativePathOfExcludedNotes: string;
+}
+
 export default class ContentLinkerPlugin extends Plugin {
-  biLinks: BiLink[] = [];
-  optionsCount: number = 10;
-  ignoredContent: IgnoredContent[] = [];
-  relativePathOfExcludedNotes: string | any[] = '';
+
+  settings: ContentLinkerPluginSettings;
 
   /**
    * Plugin onload event handler.
    */
   async onload() {
-    await this.loadData();
+    await this.loadSettings();
 
     console.log('Loading Content Linker plugin');
 
@@ -31,6 +36,7 @@ export default class ContentLinkerPlugin extends Plugin {
       name: 'Search possible bi-directional links in vault',
       callback: async () => {
         await this.searchPossibleBiLinks();
+        await this.saveSettings(); // Save data after making changes
       },
     });
 
@@ -38,42 +44,26 @@ export default class ContentLinkerPlugin extends Plugin {
   }
 
   /**
-   * Load data from the vault.
+   * Load plugin data from storage.
    */
-  async loadData() {
-    this.biLinks = await this.loadDataFromVault('content-linker-plugin') || [];
-    this.ignoredContent = await this.loadDataFromVault('content-linker-ignored-content') || [];
-    this.relativePathOfExcludedNotes = await this.loadDataFromVault('relative-path-of-excluded-notes') || '';
+  async loadSettings() {
+    this.settings = Object.assign(
+      {},
+      {
+        biLinks: [],
+        optionsCount: 10,
+        ignoredContent: [],
+        relativePathOfExcludedNotes: '',
+      },
+      await this.loadData()
+    );
   }
 
   /**
-   * Load data from the vault.
-   * @param key - The key for the data.
-   * @returns The loaded data or null if it does not exist.
+   * Save plugin data to storage.
    */
-  async loadDataFromVault(key: string): Promise<any[] | null> {
-    try {
-      const content = await this.app.vault.adapter.read(key);
-      if (content) {
-        return JSON.parse(content);
-      }
-    } catch (error) {
-      console.error(`Failed to load data for key '${key}' from vault`, error);
-    }
-    return [];
-  }
-
-  /**
-   * Save data to the vault.
-   * @param key - The key for the data.
-   * @param data - The data to be saved.
-   */
-  async saveDataToVault(key: string, data: any | any[]): Promise<void> {
-    try {
-      await this.app.vault.adapter.write(key, JSON.stringify(data));
-    } catch (error) {
-      console.error(`Failed to save data for key '${key}' to vault`, error);
-    }
+  async saveSettings() {
+    this.saveData(this.settings);
   }
 
   /**
@@ -82,7 +72,7 @@ export default class ContentLinkerPlugin extends Plugin {
   async searchPossibleBiLinks() {
     const vault = this.app.vault;
 
-    const notes = this.relativePathOfExcludedNotes === '' ? vault.getMarkdownFiles() : vault.getMarkdownFiles().filter(file => !file.path.includes(this.relativePathOfExcludedNotes.toString()));
+    const notes = this.settings.relativePathOfExcludedNotes === '' ? vault.getMarkdownFiles() : vault.getMarkdownFiles().filter(file => !file.path.includes(this.settings.relativePathOfExcludedNotes.toString()));
     
     const existingBiLinks = new Set<string>();
 
@@ -107,10 +97,10 @@ export default class ContentLinkerPlugin extends Plugin {
       for (const keyword of uniqueKeywords) {
         if (
           !potentialBiLinks.has(keyword) &&
-          !this.biLinks.some((biLink) => biLink.keyword === keyword) &&
+          !this.settings.biLinks.some((biLink) => biLink.keyword === keyword) &&
           !existingBiLinks.has(keyword) &&
           !content.includes(`[[${keyword}]]`) &&
-          !this.ignoredContent.some(
+          !this.settings.ignoredContent.some(
             (ignoredContent) => ignoredContent.keyword === keyword
           )
         ) {
@@ -124,7 +114,7 @@ export default class ContentLinkerPlugin extends Plugin {
       }
     }
 
-    this.biLinks = Array.from(potentialBiLinks.entries()).map(
+    this.settings.biLinks = Array.from(potentialBiLinks.entries()).map(
       ([keyword, count]) => ({
         keyword,
         count,
@@ -132,7 +122,7 @@ export default class ContentLinkerPlugin extends Plugin {
       })
     );
 
-    await this.saveDataToVault('content-linker-plugin', this.biLinks);
+    await this.saveSettings();
 
     new Notice('Search finished!');
   }
@@ -155,13 +145,13 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     // containerEl.createEl('h3', { text: 'Exclude notes with relative path' });
     const relativePathExclusion = new Setting(containerEl)
       .setName('Relative path of excluded notes')
-      .setDesc('Enter a relative path: ')
+      .setDesc('Enter a relative path:')
     relativePathExclusion.addText(input => input
                                     .setPlaceholder('Relative path of exluded notes')
-                                    .setValue(this.plugin.relativePathOfExcludedNotes.toString())
+                                    .setValue(this.plugin.settings.relativePathOfExcludedNotes.toString())
                                     .onChange(async (value) => {
-                                      this.plugin.relativePathOfExcludedNotes = value
-                                      await this.plugin.saveDataToVault('relative-path-of-excluded-notes', this.plugin.relativePathOfExcludedNotes);
+                                      this.plugin.settings.relativePathOfExcludedNotes = value
+                                      await this.plugin.saveSettings();
                                     }))
 
     const searchButton = containerEl.createEl('button', {
@@ -169,19 +159,19 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     });
     searchButton.addEventListener('click', async () => {
       await this.plugin.searchPossibleBiLinks();
-      this.display();
+      await this.display();
     });
 
     new Setting(containerEl)
-      .setName('Number of results')
+      .setName('Possible bi-directional content')
       .setDesc('Enter a number:')
       .addText((text) =>
         text
-          .setValue(this.plugin.optionsCount.toString())
+          .setValue(this.plugin.settings.optionsCount.toString())
           .onChange(async (value) => {
             const parsedValue = parseFloat(value);
             if (!isNaN(parsedValue)) {
-              this.plugin.optionsCount = parsedValue;
+              this.plugin.settings.optionsCount = parsedValue;
             }
           })
       );
@@ -191,7 +181,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     });
     countButton.addEventListener('click', async () => {
       await this.plugin.searchPossibleBiLinks();
-      this.display();
+      await this.display();
     });
 
     const table = containerEl.createEl('table', { cls: 'content-linker-table' });
@@ -203,9 +193,9 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     headerRow.insertCell().textContent = 'Keyword';
     headerRow.insertCell().textContent = 'Selected';
 
-    const sortedBiLinks = this.plugin.biLinks
+    const sortedBiLinks = this.plugin.settings.biLinks
       .sort((a, b) => b.count - a.count)
-      .slice(0, this.plugin.optionsCount);
+      .slice(0, this.plugin.settings.optionsCount);
 
     const tbody = table.createTBody();
     for (let index = 0; index < sortedBiLinks.length; index++) {
@@ -228,7 +218,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     updateButton.addEventListener('click', async () => {
       await this.updateBiLinks();
       await this.plugin.searchPossibleBiLinks();
-      this.display();
+      await this.display();
     });
 
     const ignoreButton = containerEl.createEl('button', {
@@ -238,7 +228,8 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       await this.ignoreSelectedOptions();
     });
 
-    this.displayIgnoredContentList();
+    await this.displayIgnoredContentList();
+    await this.displayBiDirectionalLinksList();
   }
 
   /**
@@ -247,7 +238,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
    * @returns True if ignored, false otherwise.
    */
   isIgnored(keyword: string): boolean {
-    return this.plugin.ignoredContent.some(
+    return this.plugin.settings.ignoredContent.some(
       (ignoredContent) => ignoredContent.keyword === keyword
     );
   }
@@ -287,89 +278,72 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     checkboxContainer.appendChild(checkbox);
 
     checkbox.addEventListener('change', async () => {
-      this.plugin.biLinks = this.plugin.biLinks.map((biLink) =>
+      this.plugin.settings.biLinks = this.plugin.settings.biLinks.map((biLink) =>
         biLink.keyword === keyword
           ? { ...biLink, isSelected: checkbox.checked }
           : biLink
       );
 
-      await this.saveDataToVault();
+      await this.plugin.saveSettings();
     });
 
     return checkboxContainer;
   }
 
   async updateBiLinks() {
-    const selectedBiLinks = this.plugin.biLinks.filter(
+    const selectedBiLinks = this.plugin.settings.biLinks.filter(
       (biLink) => biLink.isSelected
     );
-    this.plugin.biLinks = this.plugin.biLinks.map((biLink) =>
+  
+    const vault = this.plugin.app.vault;
+    const notes = vault.getMarkdownFiles();
+    const totalNotes = notes.length;
+  
+    let indexCount = 0;
+    const keywordToRegex = new Map();
+  
+    // Create a mapping of selected keywords to their corresponding regex patterns
+    for (const selectedBiLink of selectedBiLinks) {
+      const { keyword } = selectedBiLink;
+      const regexPattern = `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`;
+      keywordToRegex.set(keyword, new RegExp(regexPattern, 'g'));
+    }
+  
+    for (const note of notes) {
+      if (!this.isExcluded(note.path)) {
+        let content = await vault.read(note);
+        let updatedContent = content;
+    
+        for (const selectedBiLink of selectedBiLinks) {
+          const { keyword } = selectedBiLink;
+          const regex = keywordToRegex.get(keyword);
+          if (regex) {
+            updatedContent = updatedContent.replace(regex, `[[${keyword}]]`);
+          }
+        }
+    
+        if (updatedContent !== content) {
+          await vault.modify(note, updatedContent);
+        }
+    
+        indexCount++;
+        this.showProgress(indexCount, totalNotes);
+      }
+    }
+    
+  
+    // Update the isSelected status for selected bi-links
+    this.plugin.settings.biLinks = this.plugin.settings.biLinks.map((biLink) =>
       selectedBiLinks.some(({ keyword }) => biLink.keyword === keyword)
         ? { ...biLink, isSelected: false }
         : biLink
     );
   
-    // Display the initial progress notice
-    let progressNotice = new Notice('Updating: 0 of 0');
+    await this.plugin.saveSettings();
   
-    // Function to update the progress notice
-    const updateProgressNotice = (current: number, total: number) => {
-      const message = `Updating: ${current} of ${total}`;
-      progressNotice.setMessage(message);
-    };
-  
-    // Simulate an asynchronous operation using setTimeout
-    await new Promise<void>((resolve) => {
-      const delay = (ms: number) =>
-        new Promise((res) => setTimeout(res, ms));
-  
-      const updateLoop = async () => {
-        const vault = this.plugin.app.vault;
-        const notes = vault.getMarkdownFiles();
-        const totalNotes = notes.length;
-        let i = 0;
-  
-        for (const selectedBiLink of selectedBiLinks) {
-          const { keyword } = selectedBiLink;
-  
-          for (const note of notes) {
-            if (!this.isExcluded(note.path)) {
-              let content = await vault.read(note);
-  
-              const regex = new RegExp(
-                `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`,
-                'g'
-              );
-              content = content.replace(regex, `[[${keyword}]]`);
-  
-              await vault.modify(note, content);
-  
-              i++;
-              // Update progress notice
-              updateProgressNotice(i, totalNotes);
-              await delay(1); // Allow UI to update
-  
-              if (i % 100 == 0) {
-                setTimeout(() => {
-                  new Notice(progressNotice.noticeEl.getText());
-                }, 3000);
-              }
-            }
-          }
-        }
-  
-        resolve();
-      };
-  
-      updateLoop();
-    });
-  
-    // Close the progress notice
-    progressNotice.hide();
-  
-    await this.saveDataToVault();
     new Notice('Update finished!');
   }
+  
   
   /**
    * Check if a note path is excluded.
@@ -377,9 +351,9 @@ class ContentLinkerSettingTab extends PluginSettingTab {
    * @returns True if the note path is excluded, false otherwise.
    */
   isExcluded(path: string): boolean {
-    if (this.plugin.relativePathOfExcludedNotes === '') return false;
+    if (this.plugin.settings.relativePathOfExcludedNotes === '') return false;
   
-    return path.includes(this.plugin.relativePathOfExcludedNotes.toString());
+    return path.includes(this.plugin.settings.relativePathOfExcludedNotes.toString());
   }
   
 
@@ -387,7 +361,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
    * Ignore the selected bi-link options.
    */
   async ignoreSelectedOptions() {
-    const selectedOptions = this.plugin.biLinks.filter(
+    const selectedOptions = this.plugin.settings.biLinks.filter(
       (biLink) => biLink.isSelected
     );
 
@@ -398,24 +372,23 @@ class ContentLinkerSettingTab extends PluginSettingTab {
 
       // add selected options to ignored list
       if (
-        !this.plugin.ignoredContent.some(
+        !this.plugin.settings.ignoredContent.some(
           (ignoredContent) => ignoredContent.keyword === keyword
         )
       ) {
-        this.plugin.ignoredContent.push(selectedOption);
+        this.plugin.settings.ignoredContent.push(selectedOption);
       }
     }
 
     // Remove the selected options from the bi-links array
-    this.plugin.biLinks = this.plugin.biLinks.filter(
+    this.plugin.settings.biLinks = this.plugin.settings.biLinks.filter(
       (biLink) => !biLink.isSelected
     );
 
-    await this.saveIgnoredContentToVault();
-    await this.saveDataToVault();
+    await this.plugin.saveSettings();
 
     await this.plugin.searchPossibleBiLinks();
-    this.display();
+    await this.display();
   }
 
   /**
@@ -439,7 +412,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     ignoredContentHeaderRow.insertCell().textContent = 'Keyword';
     ignoredContentHeaderRow.insertCell().textContent = 'Selected';
 
-    const sortedIgnoredList = this.plugin.ignoredContent.sort(
+    const sortedIgnoredList = this.plugin.settings.ignoredContent.sort(
       (a, b) => b.count - a.count
     );
 
@@ -481,14 +454,14 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     checkboxContainer.appendChild(checkbox);
 
     checkbox.addEventListener('change', async () => {
-      this.plugin.ignoredContent = this.plugin.ignoredContent.map(
+      this.plugin.settings.ignoredContent = this.plugin.settings.ignoredContent.map(
         (ignoredContent) =>
           ignoredContent.keyword === keyword
             ? { ...ignoredContent, isSelected: checkbox.checked }
             : ignoredContent
       );
 
-      await this.saveIgnoredContentToVault();
+      await this.plugin.saveSettings();
     });
 
     return checkboxContainer;
@@ -499,7 +472,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
    */
   async removeFromIgnoredList() {
     // Get selected ignored options
-    const selectedIgnoredOptions = this.plugin.ignoredContent.filter(
+    const selectedIgnoredOptions = this.plugin.settings.ignoredContent.filter(
       (ignoredContent) => {
         return ignoredContent.isSelected;
       }
@@ -509,37 +482,147 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       const { keyword } = selectedIgnoredOption;
 
       // Remove from ignored content list
-      const index = this.plugin.ignoredContent.findIndex(
+      const index = this.plugin.settings.ignoredContent.findIndex(
         (ignoredContent) => ignoredContent.keyword === keyword
       );
       if (index !== -1) {
-        this.plugin.ignoredContent.splice(index, 1);
+        this.plugin.settings.ignoredContent.splice(index, 1);
       }
     }
 
-    await this.saveIgnoredContentToVault();
-    await this.saveDataToVault();
+    await this.plugin.saveSettings();
 
-    this.display(); // Refresh the ignored content list
+    await this.display(); // Refresh the ignored content list
   }
 
-  /**
-   * Save the bi-links data to the vault.
-   */
-  async saveDataToVault() {
-    await this.plugin.saveDataToVault(
-      'content-linker-plugin',
-      this.plugin.biLinks
+  async showProgress(indexCount: number, totalNumber: number)
+  {
+      if (indexCount == 1 || 
+        indexCount % Math.floor(totalNumber/10)  == 0 || 
+        indexCount == totalNumber) {
+      const message = `Updating: ${indexCount} of ${totalNumber}`;
+      new Notice(message);
+    }
+  }
+
+  async displayBiDirectionalLinksList() {
+    const { containerEl } = this;
+  
+    const linkedContentSetting = new Setting(containerEl)
+      .setName('Linked content list')
+      .setDesc('Content that is already bi-directional-linked. Count including non-bi-directional-linked format');
+  
+    const linkedContentTable = containerEl.createEl('table', {
+      cls: 'content-linker-linked-content-table',
+    });
+  
+    const thead = linkedContentTable.createTHead();
+    const headerRow = thead.insertRow();
+    headerRow.insertCell().textContent = 'No.';
+    headerRow.insertCell().textContent = 'Count';
+    headerRow.insertCell().textContent = 'Keyword';
+    headerRow.insertCell().textContent = 'Selected';
+  
+    // Sort the bi-links by count in descending order
+    const sortedBiLinks = this.plugin.settings.biLinks
+      .sort((a, b) => b.count - a.count);
+  
+    const tbody = linkedContentTable.createTBody();
+    const batchSize = 100; // Adjust the batch size as needed
+    let indexCount = 0;
+    
+    const processBatch = async () => {
+      for (let i = 0; i < batchSize && indexCount < sortedBiLinks.length; i++) {
+        const { keyword, count, isSelected } = sortedBiLinks[indexCount];
+  
+        // Check if the keyword is already a bi-link in any note
+        const isAlreadyBiLink = await this.isAlreadyBiLink(keyword);
+  
+        if (isAlreadyBiLink && !this.isIgnored(keyword)) {
+          const row = tbody.insertRow();
+          row.insertCell().textContent = (indexCount + 1).toString();
+          row.insertCell().textContent = count.toString();
+          row.insertCell().textContent = keyword;
+          row.insertCell().appendChild(this.createCheckbox(keyword, isSelected));
+        }
+  
+        indexCount++;
+        this.showProgress(indexCount, sortedBiLinks.length);
+      }
+  
+      // If there are more items to process, continue with the next batch
+      if (indexCount < sortedBiLinks.length) {
+        setTimeout(processBatch, 0); // Use setTimeout to yield to the event loop
+      } else {
+        // All items have been processed, now update the UI
+        containerEl.appendChild(linkedContentTable);
+        
+        const removeButton = containerEl.createEl('button', {
+          text: 'Remove bi-directional links for selected option(s)',
+        });
+        removeButton.addEventListener('click', async () => {
+          // Remove bi-directional links for selected options from the linked content list
+          await this.removeSelectedBiLinks();
+        });
+      }
+    };
+  
+    // Start processing the first batch
+    processBatch();
+  }
+  
+  async removeSelectedBiLinks() {
+    const selectedBiLinks = this.plugin.settings.biLinks.filter(
+      (biLink) => biLink.isSelected
     );
-  }
-
-  /**
-   * Save the ignored content data to the vault.
-   */
-  async saveIgnoredContentToVault() {
-    await this.plugin.saveDataToVault(
-      'content-linker-ignored-content',
-      this.plugin.ignoredContent
+  
+    // Step 1: Create a set of selected keywords
+    const selectedKeywords = new Set<string>(
+      selectedBiLinks.map((biLink) => biLink.keyword)
     );
-  }
+  
+    const vault = this.app.vault;
+    const notes = this.plugin.settings.relativePathOfExcludedNotes === ''
+      ? vault.getMarkdownFiles()
+      : vault.getMarkdownFiles().filter(file => !file.path.includes(this.plugin.settings.relativePathOfExcludedNotes.toString()));
+  
+    let indexCount = 0;
+  
+    // Step 2: Iterate through all notes in the library
+    for (const note of notes) {
+      let content = await vault.read(note);
+      let modified = false;
+  
+      // Step 3: Check if the note contains any of the selected keywords
+      for (const selectedKeyword of selectedKeywords) {
+        const regex = new RegExp(
+          `\\[\\[${selectedKeyword}\\]\\]`,
+          'g'
+        );
+  
+        if (content.match(regex)) {
+          // Step 4: Remove the bidirectional link
+          content = content.replace(regex, selectedKeyword);
+          modified = true;
+        }
+      }
+  
+      // Step 5: Update the note if it was modified
+      if (modified) {
+        await vault.modify(note, content);
+        indexCount++;
+        this.showProgress(indexCount, notes.length);
+      }
+    }
+  
+    // Remove the selected options from the bi-links array
+    this.plugin.settings.biLinks = this.plugin.settings.biLinks.filter(
+      (biLink) => !biLink.isSelected
+    );
+  
+    await this.plugin.saveSettings();
+    new Notice('Selected bi-directional links removed!');
+    await this.plugin.searchPossibleBiLinks();
+    await this.display();
+  }  
 }
