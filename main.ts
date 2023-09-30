@@ -130,6 +130,7 @@ export default class ContentLinkerPlugin extends Plugin {
 
 class ContentLinkerSettingTab extends PluginSettingTab {
   plugin: ContentLinkerPlugin;
+  private notice: Notice | null = null;
 
   constructor(app: App, plugin: ContentLinkerPlugin) {
     super(app, plugin);
@@ -500,16 +501,6 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     await this.display(); // Refresh the ignored content list
   }
 
-  async showProgress(indexCount: number, totalNumber: number)
-  {
-      if (indexCount == 1 || 
-        indexCount % Math.floor(totalNumber/5)  == 0 || 
-        indexCount == totalNumber) {
-      const message = `Updating: ${indexCount} of ${totalNumber}`;
-      new Notice(message);
-    }
-  }
-
   async displayBiDirectionalLinksList() {
     const { containerEl } = this;
   
@@ -549,6 +540,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     const batchSize = 100; // Adjust the batch size as needed
     let indexCount = 0;
     
+
     const processBatch = async () => {
       for (let i = 0; i < batchSize && indexCount < sortedBiLinks.length; i++) {
         const { keyword, count, isSelected } = sortedBiLinks[indexCount];
@@ -646,4 +638,30 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     await this.plugin.searchPossibleBiLinks();
     await this.display();
   }  
+
+  async showProgress(indexCount: number, totalNumber: number) {
+    if (!this.notice) {
+      const message = `Updating: ${indexCount} of ${totalNumber}`;
+      this.notice = new Notice(message);
+  
+      setTimeout(() => {
+        this.closeNotice();
+      }, 3000);
+    } else {
+      this.notice.setMessage(`Updating: ${indexCount} of ${totalNumber}`);
+    }
+  
+    if (indexCount === totalNumber) {
+      new Notice('Updating finish!');
+      this.closeNotice();
+    }
+  }
+  
+  async closeNotice() {
+    if (this.notice) {
+      this.notice.hide();
+      this.notice = null;
+    }
+  }
+  
 }
