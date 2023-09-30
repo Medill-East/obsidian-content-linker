@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 
 interface BiLink {
   keyword: string;
@@ -69,40 +69,40 @@ export default class ContentLinkerPlugin extends Plugin {
   /**
    * Search for possible bi-links in the vault.
    */
-  async searchPossibleBiLinks() {
-    const vault = this.app.vault;
+  /**
+ * Search for possible bi-links in the vault.
+ */
+async searchPossibleBiLinks() {
+  const vault = this.app.vault;
+  const { relativePathOfExcludedNotes, biLinks, ignoredContent } = this.settings;
+  const isExcludedNote = (path: string) =>
+    relativePathOfExcludedNotes !== '' && path.includes(relativePathOfExcludedNotes);
 
-    const notes = this.settings.relativePathOfExcludedNotes === '' ? vault.getMarkdownFiles() : vault.getMarkdownFiles().filter(file => !file.path.includes(this.settings.relativePathOfExcludedNotes.toString()));
-    
-    const existingBiLinks = new Set<string>();
+  const notes = relativePathOfExcludedNotes === ''
+    ? vault.getMarkdownFiles()
+    : vault.getMarkdownFiles().filter((file) => !isExcludedNote(file.path));
 
-    for (const note of notes) {
+  const existingBiLinks = new Set<string>();
+  const potentialBiLinks = new Map<string, number>();
+
+  const processNote = async (note: TFile) => {
+    try {
       const content = await vault.cachedRead(note);
-
       const biLinkKeywords = content.match(/\[\[(.+?)\]\]/g) || [];
+      const uniqueKeywords = content.match(/\b\w+\b/g) || [];
 
       for (const biLink of biLinkKeywords) {
         const keyword = biLink.slice(2, -2);
         existingBiLinks.add(keyword);
       }
-    }
-
-    const potentialBiLinks = new Map<string, number>();
-
-    for (const note of notes) {
-      const content = await vault.cachedRead(note);
-
-      const uniqueKeywords = content.match(/\b\w+\b/g) || [];
 
       for (const keyword of uniqueKeywords) {
         if (
           !potentialBiLinks.has(keyword) &&
-          !this.settings.biLinks.some((biLink) => biLink.keyword === keyword) &&
+          !biLinks.some((biLink) => biLink.keyword === keyword) &&
           !existingBiLinks.has(keyword) &&
           !content.includes(`[[${keyword}]]`) &&
-          !this.settings.ignoredContent.some(
-            (ignoredContent) => ignoredContent.keyword === keyword
-          )
+          !ignoredContent.some((ignored) => ignored.keyword === keyword)
         ) {
           potentialBiLinks.set(keyword, 1);
         } else {
@@ -112,20 +112,25 @@ export default class ContentLinkerPlugin extends Plugin {
           );
         }
       }
+    } catch (error) {
+      console.error(`Error processing note: ${note.name}`, error);
     }
+  };
 
-    this.settings.biLinks = Array.from(potentialBiLinks.entries()).map(
-      ([keyword, count]) => ({
-        keyword,
-        count,
-        isSelected: false,
-      })
-    );
+  await Promise.all(notes.map(processNote));
 
-    await this.saveSettings();
+  this.settings.biLinks = Array.from(potentialBiLinks.entries())
+    .map(([keyword, count]) => ({
+      keyword,
+      count,
+      isSelected: false,
+    }));
 
-    new Notice('Search finished!');
-  }
+  await this.saveSettings();
+
+  new Notice('Search finished!');
+}
+
 }
 
 class ContentLinkerSettingTab extends PluginSettingTab {
@@ -515,12 +520,9 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       // search already linked content in vault
       this.searchLinkedContent();
     });
-
-    
   }
 
-  async searchLinkedContent()
-  {
+  async searchLinkedContent() {
     const linkedContentTable = this.containerEl.createEl('table', {
       cls: 'content-linker-linked-content-table',
     });
@@ -532,56 +534,61 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     headerRow.insertCell().textContent = 'Keyword';
     headerRow.insertCell().textContent = 'Selected';
   
-    // Sort the bi-links by count in descending order
     const sortedBiLinks = this.plugin.settings.biLinks
       .sort((a, b) => b.count - a.count);
   
     const tbody = linkedContentTable.createTBody();
     const batchSize = 100; // Adjust the batch size as needed
-    let indexCount = 0;
-    
-
-    const processBatch = async () => {
-      for (let i = 0; i < batchSize && indexCount < sortedBiLinks.length; i++) {
-        const { keyword, count, isSelected } = sortedBiLinks[indexCount];
+  
+    const processBatch = async (batchIndex: number) => {
+      const batchStartIndex = batchIndex * batchSize;
+      const batchEndIndex = Math.min(
+        batchStartIndex + batchSize,
+        sortedBiLinks.length
+      );
+  
+      const batchPromises = [];
+  
+      for (let i = batchStartIndex; i < batchEndIndex; i++) {
+        const { keyword, count, isSelected } = sortedBiLinks[i];
   
         // Check if the keyword is already a bi-link in any note
         const isAlreadyBiLink = await this.isAlreadyBiLink(keyword);
   
         if (isAlreadyBiLink && !this.isIgnored(keyword)) {
           const row = tbody.insertRow();
-          row.insertCell().textContent = (indexCount + 1).toString();
+          row.insertCell().textContent = (i + 1).toString();
           row.insertCell().textContent = count.toString();
           row.insertCell().textContent = keyword;
           row.insertCell().appendChild(this.createCheckbox(keyword, isSelected));
         }
-        indexCount++;
-        this.showProgress(indexCount, sortedBiLinks.length);
       }
   
       // If there are more items to process, continue with the next batch
-      if (indexCount < sortedBiLinks.length) {
-        setTimeout(processBatch, 0); // Use setTimeout to yield to the event loop
-      } else {
-        // All items have been processed, now update the UI
-        this.containerEl.appendChild(linkedContentTable);
-
-        const removeButton = this.containerEl.createEl('button', 
-          {text: 'Remove bi-directional links for selected option(s) \n After cliking the button, setting page will be refreshed',
-          cls: 'multiline-button',
-        });
-        removeButton.style.height = 'auto'; // 
-        removeButton.style.whiteSpace = 'pre-line';
-        removeButton.style.textAlign = 'left';
-        removeButton.addEventListener('click', async () => {
-          // Remove bi-directional links for selected options from the linked content list
-          await this.removeSelectedBiLinks();
-        });
+      if (batchEndIndex < sortedBiLinks.length) {
+        batchPromises.push(processBatch(batchIndex + 1));
       }
+  
+      await Promise.all(batchPromises);
     };
   
     // Start processing the first batch
-    processBatch();
+    await processBatch(0);
+  
+    // All items have been processed, now update the UI
+    this.containerEl.appendChild(linkedContentTable);
+  
+    const removeButton = this.containerEl.createEl('button', {
+      text: 'Remove bi-directional links for selected option(s)\nAfter clicking the button, the setting page will be refreshed',
+    });
+    removeButton.classList.add('multiline-button');
+    removeButton.style.height = 'auto';
+    removeButton.style.whiteSpace = 'pre-line';
+    removeButton.style.textAlign = 'left';
+    removeButton.addEventListener('click', async () => {
+      // Remove bi-directional links for selected options and refresh the setting page
+      await this.removeSelectedBiLinks();
+    });
   }
   
   async removeSelectedBiLinks() {
