@@ -2,7 +2,7 @@
 
 ## [中文](#chinese)
 
-For English, please see [English](#english).
+For English, please see [English](#english) below.
 
 ## 免责声明
 
@@ -95,7 +95,7 @@ For English, please see [English](#english).
 
 ---
 
-中文说明, 请见 [中文](#chinese).
+中文说明, 请见上方 [中文](#chinese).
 
 ## [English](#english)
 
