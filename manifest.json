@@ -5,10 +5,6 @@
     "minAppVersion": "0.9.7",
     "author": "Medill-East",
     "authorUrl": "https://medill-east.github.io/",
-    "main": "main.js",
-    "styles": "styles.css",
-    "dependencies": [],
     "description": "A plugin for searching and adding bi-directional links to existing content in Obsidian Vault.",
-    "isDesktopOnly": true,
-    "license": "MIT"
+    "isDesktopOnly": true
 }
