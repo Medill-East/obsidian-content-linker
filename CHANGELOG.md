@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.10](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.9...1.3.10) (2023-09-30)
+
+
+### Bug Fixes
+
+* make search linked content list function trigger manually ([b52028f](https://github.com/Medill-East/obsidian-content-linker/commit/b52028f4c537ded4d8f4e96e5a4cc486f3350b6b))
+
 ### [1.3.9](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.8...1.3.9) (2023-09-30)
 
 
