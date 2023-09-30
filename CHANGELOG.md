@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.11](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.10...1.3.11) (2023-09-30)
+
+
+### Bug Fixes
+
+* update display logic of progress bar ([02f45bd](https://github.com/Medill-East/obsidian-content-linker/commit/02f45bd14ee00c44b07bffb5c9417107ede27a0c))
+
 ### [1.3.10](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.9...1.3.10) (2023-09-30)
 
 
