@@ -184,7 +184,31 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       await this.display();
     });
 
-    const table = containerEl.createEl('table', { cls: 'content-linker-table' });
+    this.updateTableofPossibleBiDirectionalContentTable();
+
+    const updateButton = containerEl.createEl('button', {
+      text: 'Update bi-directional link for selected option(s)',
+    });
+    updateButton.addEventListener('click', async () => {
+      await this.updateBiLinks();
+      await this.plugin.searchPossibleBiLinks();
+      await this.display();
+    });
+
+    const ignoreButton = containerEl.createEl('button', {
+      text: 'Ignore selected option(s)',
+    });
+    ignoreButton.addEventListener('click', async () => {
+      await this.ignoreSelectedOptions();
+    });
+
+    await this.displayIgnoredContentList();
+    await this.displayBiDirectionalLinksList();
+  }
+
+  async updateTableofPossibleBiDirectionalContentTable()
+  {
+    const table = this.containerEl.createEl('table', { cls: 'content-linker-table' });
 
     const thead = table.createTHead();
     const headerRow = thead.insertRow();
@@ -211,25 +235,6 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         row.insertCell().appendChild(this.createCheckbox(keyword, isSelected));
       }
     }
-
-    const updateButton = containerEl.createEl('button', {
-      text: 'Update bi-directional link for selected option(s)',
-    });
-    updateButton.addEventListener('click', async () => {
-      await this.updateBiLinks();
-      await this.plugin.searchPossibleBiLinks();
-      await this.display();
-    });
-
-    const ignoreButton = containerEl.createEl('button', {
-      text: 'Ignore selected option(s)',
-    });
-    ignoreButton.addEventListener('click', async () => {
-      await this.ignoreSelectedOptions();
-    });
-
-    await this.displayIgnoredContentList();
-    await this.displayBiDirectionalLinksList();
   }
 
   /**
@@ -498,7 +503,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
   async showProgress(indexCount: number, totalNumber: number)
   {
       if (indexCount == 1 || 
-        indexCount % Math.floor(totalNumber/10)  == 0 || 
+        indexCount % Math.floor(totalNumber/5)  == 0 || 
         indexCount == totalNumber) {
       const message = `Updating: ${indexCount} of ${totalNumber}`;
       new Notice(message);
@@ -512,7 +517,20 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       .setName('Linked content list')
       .setDesc('Content that is already bi-directional-linked. Count including non-bi-directional-linked format');
   
-    const linkedContentTable = containerEl.createEl('table', {
+    const searchLinkedContentButton = containerEl.createEl('button', {
+      text: 'Search linked content in valut (May take long time if vault is big)',
+    });
+    searchLinkedContentButton.addEventListener('click', async () => {
+      // search already linked content in vault
+      this.searchLinkedContent();
+    });
+
+    
+  }
+
+  async searchLinkedContent()
+  {
+    const linkedContentTable = this.containerEl.createEl('table', {
       cls: 'content-linker-linked-content-table',
     });
   
@@ -545,7 +563,6 @@ class ContentLinkerSettingTab extends PluginSettingTab {
           row.insertCell().textContent = keyword;
           row.insertCell().appendChild(this.createCheckbox(keyword, isSelected));
         }
-  
         indexCount++;
         this.showProgress(indexCount, sortedBiLinks.length);
       }
@@ -555,11 +572,15 @@ class ContentLinkerSettingTab extends PluginSettingTab {
         setTimeout(processBatch, 0); // Use setTimeout to yield to the event loop
       } else {
         // All items have been processed, now update the UI
-        containerEl.appendChild(linkedContentTable);
-        
-        const removeButton = containerEl.createEl('button', {
-          text: 'Remove bi-directional links for selected option(s)',
+        this.containerEl.appendChild(linkedContentTable);
+
+        const removeButton = this.containerEl.createEl('button', 
+          {text: 'Remove bi-directional links for selected option(s) \n After cliking the button, setting page will be refreshed',
+          cls: 'multiline-button',
         });
+        removeButton.style.height = 'auto'; // 
+        removeButton.style.whiteSpace = 'pre-line';
+        removeButton.style.textAlign = 'left';
         removeButton.addEventListener('click', async () => {
           // Remove bi-directional links for selected options from the linked content list
           await this.removeSelectedBiLinks();
