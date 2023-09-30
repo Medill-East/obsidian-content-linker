@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.12](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.11...1.3.12) (2023-09-30)
+
+
+### Bug Fixes
+
+* optimize searching performance ([161c97d](https://github.com/Medill-East/obsidian-content-linker/commit/161c97d8817bad2ce449fdba877fc669d9469173))
+
 ### [1.3.11](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.10...1.3.11) (2023-09-30)
 
 
