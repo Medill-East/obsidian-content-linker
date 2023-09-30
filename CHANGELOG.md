@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.14](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.13...1.3.14) (2023-09-30)
+
+
+### Bug Fixes
+
+* remove main, styles, and lisence from manifest ([309da7c](https://github.com/Medill-East/obsidian-content-linker/commit/309da7c896b1025876242cc12afd796fcf4c70c9))
+
 ### [1.3.13](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.12...1.3.13) (2023-09-30)
 
 
