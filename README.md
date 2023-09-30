@@ -30,7 +30,8 @@ For English, please see [English](#english).
 
 ## 安装
 
-1. （还未上架）从社区插件库中安装
+1. 从社区插件库中安装（推荐）
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202309301011941.png)
 2. 拷贝 `main.js`, `styles.css`, `manifest.json` 到库中的以下位置：`VaultFolder/.obsidian/plugins/obsidian-content-linker/`.
 
 ## 如何使用
@@ -124,7 +125,8 @@ It is recommended to use this plugin together with the Various Complements (http
 
 ## Installation
 
-1. (not avaliable yet) Install from Community plugins
+1. Install from Community plugins (recommended)
+![](https://raw.githubusercontent.com/Medill-East/IMGStorage/master/img/PicGo-Github-PicBed/202309301011941.png)
 2. Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/obsidian-content-linker/`.
 
 ## How to Use
