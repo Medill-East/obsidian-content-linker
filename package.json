@@ -1,6 +1,6 @@
 {
 	"name": "content-linker",
-	"version": "1.4.0",
+	"version": "1.5.0",
 	"description": "This plugin tries to enable user to create bi-directional links easily based on the content of their vault.",
 	"main": "main.js",
 	"scripts": {
