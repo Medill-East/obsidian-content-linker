@@ -316,7 +316,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
     // Create a mapping of selected keywords to their corresponding regex patterns
     for (const selectedBiLink of selectedBiLinks) {
       const { keyword } = selectedBiLink;
-      const regexPattern = `\\b${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`;
+      const regexPattern = `(?<!\\[\\[)${keyword.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}(?!\\]\\])`;
       keywordToRegex.set(keyword, new RegExp(regexPattern, 'g'));
     }
   
@@ -514,7 +514,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       .setDesc('Content that is already bi-directional-linked. Count including non-bi-directional-linked format');
   
     const searchLinkedContentButton = containerEl.createEl('button', {
-      text: 'Search linked content in valut (May take long time if vault is big)',
+      text: 'Search linked content in vault (May take long time if vault is big)',
     });
     searchLinkedContentButton.addEventListener('click', async () => {
       // search already linked content in vault
@@ -538,7 +538,7 @@ class ContentLinkerSettingTab extends PluginSettingTab {
       .sort((a, b) => b.count - a.count);
   
     const tbody = linkedContentTable.createTBody();
-    const batchSize = 100; // Adjust the batch size as needed
+    const batchSize = 10; // Adjust the batch size as needed
   
     const processBatch = async (batchIndex: number) => {
       const batchStartIndex = batchIndex * batchSize;
