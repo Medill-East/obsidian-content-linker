@@ -89,7 +89,7 @@ async searchPossibleBiLinks() {
     try {
       const content = await vault.cachedRead(note);
       const biLinkKeywords = content.match(/\[\[(.+?)\]\]/g) || [];
-      const uniqueKeywords = content.match(/\b\w+\b/g) || [];
+      const uniqueKeywords = content.match(/[\u4e00-\u9fa5]+|\b[\w-]+\b/g) || [];
 
       for (const biLink of biLinkKeywords) {
         const keyword = biLink.slice(2, -2);
