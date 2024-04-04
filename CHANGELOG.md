@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.14...1.4.0) (2024-04-04)
+
+
+### Features
+
+* add support for Chinese ([cc5f1cf](https://github.com/Medill-East/obsidian-content-linker/commit/cc5f1cf4b45ebe0600eedc58624159057cfaa694))
+
 ### [1.3.14](https://github.com/Medill-East/obsidian-content-linker/compare/1.3.13...1.3.14) (2023-09-30)
 
 
